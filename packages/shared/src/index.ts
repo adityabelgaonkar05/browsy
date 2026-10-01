@@ -14,6 +14,8 @@ export const errorCodes = [
   "TIMEOUT",
   "BUSY",
   "MESSAGE_TOO_LARGE",
+  "VISION_UNSUPPORTED",
+  "TOOL_USE_UNSUPPORTED",
 ] as const;
 export type ErrorCode = (typeof errorCodes)[number];
 
@@ -62,7 +64,7 @@ export interface ScreenshotResult {
   data: string;
 }
 
-// This interface is the browser boundary. Future transports and chat use it unchanged.
+// Browser boundary shared by every transport and built-in chat.
 export interface BrowserController {
   listTabs(): Promise<BrowserTab[]>;
   openTab(url: string): Promise<BrowserTab>;

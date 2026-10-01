@@ -43,7 +43,7 @@ function optionalInteger(
   return value;
 }
 
-// Transport independent dispatch: sidebar and MCP use this; future chat will too.
+// Shared dispatch for the manual panel, built-in chat and MCP transport.
 export async function dispatchTool(
   controller: BrowserController,
   input: unknown,

@@ -2,6 +2,8 @@
 
 Follow the [quick start](../README.md#quick-start) for the default installation on macOS, Linux, or Windows.
 
+Built-in chat is configured separately in the sidebar’s **Chat → Settings** and needs no npm bridge. See the [chat guide](chat.md).
+
 ## Agent configuration
 
 For automatic registration:

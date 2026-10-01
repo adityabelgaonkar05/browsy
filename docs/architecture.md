@@ -3,7 +3,7 @@
 ```text
 Terminal agent → stdio MCP → Local IPC → Native Messaging host
                                                     ↓
-Control panel → Chrome runtime messages → Extension background
+Control panel / AI chat → runtime messages → Extension background
                                                     ↓
                                       dispatchTool → BrowserController
                                                           ↓
@@ -12,18 +12,20 @@ Control panel → Chrome runtime messages → Extension background
 
 ## Workspaces
 
-| Directory                      | Responsibility                                                            |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| `apps/extension/background`    | MV3 lifecycle, UI messaging, native connection/retry                      |
-| `apps/extension/browser-tools` | Shared dispatcher and Chrome browser controller                           |
-| `apps/extension/sidebar`       | React manual control panel                                                |
-| `packages/shared`              | Controller interface, request/result types, protocol constants and guards |
-| `packages/native-bridge`       | Native host lifecycle, Local IPC clients, framing and request routing     |
-| `packages/mcp`                 | MCP schemas, descriptions, text/image results and stdio transport         |
-| `packages/cli`                 | Registration, diagnostics, removal and executable entry points            |
-| `scripts`                      | Builds and automated integration/package verification                     |
+| Directory                      | Responsibility                                                             |
+| ------------------------------ | -------------------------------------------------------------------------- |
+| `apps/extension/background`    | MV3 lifecycle, UI messaging, native connection/retry                       |
+| `apps/extension/browser-tools` | Shared dispatcher and Chrome browser controller                            |
+| `apps/extension/sidebar`       | React control panel and streaming AI chat                                  |
+| `apps/extension/providers`     | Provider adapters, model discovery, streaming and multimodal serialization |
+| `apps/extension/chat`          | Tool loop, local history and structured context compaction                 |
+| `packages/shared`              | Controller interface, request/result types, protocol constants and guards  |
+| `packages/native-bridge`       | Native host lifecycle, Local IPC clients, framing and request routing      |
+| `packages/mcp`                 | MCP schemas, descriptions, text/image results and stdio transport          |
+| `packages/cli`                 | Registration, diagnostics, removal and executable entry points             |
+| `scripts`                      | Builds and automated integration/package verification                      |
 
-Browser behavior does not depend on MCP. Both transports use the same `dispatchTool` function and controller instance. A future browser implementation can replace `ChromeBrowserController` behind the interface.
+Browser behavior does not depend on MCP. MCP, manual control, and chat use the same `dispatchTool` function and controller instance. MCP and chat also share the tool descriptions and schemas in `packages/shared/src/browser-tools.ts`. A future browser implementation can replace `ChromeBrowserController` behind the interface.
 
 ## Lifecycle
 
@@ -56,3 +58,13 @@ The build bundles the CLI, native bridge, MCP server, and their dependencies int
 macOS and Linux use Node Unix sockets with filesystem permissions. Windows uses a named pipe with a protected ACL restricted to the current user and denying network logons. A small C# helper compiled by system Windows PowerShell owns the secured pipe instances and relays byte streams to the Node host over private inherited stdio. Routing, framing, timeouts, MCP, and browser tools remain shared. Closing the host’s helper stdin shuts down the helper; Windows removes pipe instances automatically.
 
 Windows installs a `.cmd` launcher and a current-user registry value. Unix platforms install executable shell launchers and browser-specific JSON manifests. The standalone CLI package includes the Windows helper source.
+
+## Built-in chat
+
+The sidebar hosts provider fetches and the tool loop, avoiding MV3 worker lifetime limits during long streams. OpenAI uses the Responses API with stateless encrypted reasoning retention; OpenRouter and compatible servers use Chat Completions; Anthropic uses Messages. Adapters normalize assistant text, tool calls, image results, usage, and provider-specific reasoning state. Models are chosen by the user rather than hardcoded. OpenRouter uses authenticated user-filtered discovery.
+
+Only the extension background owns browser control. Chat submits validated calls to the same runtime transport as the manual panel. Closed/interrupted sidebars record unresolved calls as unknown outcomes when reopened; actions never resume automatically. An extension-origin Web Lock prevents concurrent sidebar turns. The chat code loads only after selecting Chat.
+
+Chat context is separate from MCP clients. It retains pinned instructions, structured task state, chronological notes from older conversation, the two most recent user turns verbatim, and current browser metadata/results. Compaction begins around `min(100000, modelContext * 0.8)` with a 128K logical budget. Usage comes from provider reports where available; context estimates use a conservative byte heuristic and image allowance, not an exact tokenizer. Tool schema and output space are reserved before generation.
+
+Keys and profiles use trusted local extension storage; the conversation uses IndexedDB so screenshots do not compete with Chrome’s small storage quota. Provider authentication headers never travel through the browser dispatcher or bridge. No provider request is made until the user requests model discovery or sends a chat message.

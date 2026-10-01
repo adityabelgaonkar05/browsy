@@ -59,7 +59,7 @@ Or:
 
 > Find the open GitHub tab containing an issue about authentication and summarize it.
 
-Browser tools use your existing website sessions. The agent controls its own model, API credentials, and conversation context. The extension currently provides a manual control panel; built-in AI chat is not included.
+Browser tools use your existing website sessions. The agent controls its own model, API credentials, and conversation context. The extension also includes its own AI chat sidebar with the same browser tools.
 
 ## npm CLI flow
 
@@ -71,6 +71,18 @@ agent-native setup --agent codex
 ```
 
 Install the Chrome extension separately and keep Chrome open. Choose `codex`, `claude`, or `opencode`; setup adds the browser tools for that agent. When the npm package is published, the registry package name replaces `./packages/cli`. Its final product name is still undecided. Setup runs explicitly and does not depend on npm lifecycle scripts.
+
+## Built-in AI chat
+
+Reload the extension after building, open the sidebar, and select **Chat**. In **Settings**:
+
+1. Choose OpenRouter, OpenAI, Anthropic, or an OpenAI-compatible endpoint.
+2. Enter your API key (optional for a local server) and choose **Load models**, or enter a model ID.
+3. Confirm the model’s tool/vision capabilities and context window, then **Save provider**.
+
+Try “Summarize my active tab” or “Find the GitHub tab about authentication.” Replies stream as they arrive, with expandable browser tool results. **Stop** cancels further work; **New chat** clears history. Provider/model changes start a fresh conversation. The manual panel remains under **Browser tools**.
+
+Built-in chat does not need the npm bridge. Keys stay in local extension storage, never Chrome Sync or webpages. Chat, requested page data, and screenshots go directly to the selected provider; a local endpoint keeps those requests local. See the [chat guide](docs/chat.md) for setup, capabilities, context, and data handling.
 
 ## Browser tools
 
@@ -112,7 +124,7 @@ The macOS, Linux, and Windows CI workflow runs the same checks on Node.js 22 and
 
 ## Scope
 
-Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, full-page screenshots, uploads/downloads, developer tools, and built-in AI chat are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
+Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, full-page screenshots, uploads/downloads, and developer tools are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
 
 ## License
 

@@ -2,6 +2,9 @@ import { ChromeBrowserController } from "../browser-tools/chrome-controller";
 import { dispatchTool } from "../browser-tools/dispatcher";
 import { NativeConnection } from "./native-connection";
 
+// Keys are local and available only to trusted extension contexts.
+void chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" }).catch(() => {});
+
 const controller = new ChromeBrowserController();
 const native = new NativeConnection(controller);
 

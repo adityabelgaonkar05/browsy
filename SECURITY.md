@@ -13,7 +13,13 @@ Agent Native Browser trusts software running as the current OS user to control t
 
 ## Page data
 
-The extension contains no AI provider API keys, analytics, or Chrome Sync storage. Normal test fixtures and browser control run locally. Tool results are passed to the selected terminal agent, which may send those results to its model provider according to that agent's configuration.
+The extension contains no embedded provider credentials or analytics. User-supplied chat API keys are stored in `chrome.storage.local`, restricted to trusted extension contexts; they never use Chrome Sync. Keys are sent only in authentication headers to the configured provider. They are not injected into webpages, included in prompts/browser messages, or logged. Provider fetches refuse redirects and use HTTPS, except HTTP for loopback local servers.
+
+Built-in chat sends conversation text and requested browser results directly to the chosen provider. Screenshots are requested only as tools and sent as multimodal input only when vision is enabled. Provider access is granted for the selected origin through Chrome's optional host permission prompt. Markdown does not render raw HTML or automatically load remote images.
+
+Chat history, screenshots, pinned instructions, and compacted task state are stored locally in extension-origin IndexedDB. **New chat** removes the current stored conversation; pinned instructions remain until edited. **Forget key** removes a provider's saved API key. Removing the extension removes its local storage. Storage is not an encrypted credential vault; the project trusts software running as the current OS user.
+
+Normal test fixtures and browser control run locally. External MCP tool results are passed to the terminal agent, which may send them to its model provider according to that agent's configuration.
 
 Snapshots omit input value fields. Raw HTML and screenshots can contain private page data and are captured only on explicit tool requests. Transport diagnostics do not log request/page contents. Do not include real credentials or private browsing data in public issue reports.
 
