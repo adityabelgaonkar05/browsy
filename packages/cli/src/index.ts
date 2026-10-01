@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { startNativeHost } from "@agent-native/native-bridge";
 import { DEVELOPMENT_EXTENSION_ID } from "@agent-native/shared";
 import { startMcp } from "@agent-native/mcp";
+import { parseAgent, prepareAgent } from "./agents";
 import {
   cliCommand,
   doctor,
@@ -14,6 +15,7 @@ import {
 const HELP = `Agent Native Browser — local Chrome tools for terminal agents
 
 Commands:
+  agent-native setup --agent codex|claude|opencode [--home DIRECTORY]
   agent-native install [--extension-id ID] [--home DIRECTORY]
   agent-native doctor [--home DIRECTORY] [--json]
   agent-native config [--home DIRECTORY] [--json]
@@ -21,6 +23,8 @@ Commands:
   agent-native uninstall [--home DIRECTORY] [--json]
 
 install registers the Native Messaging host on macOS, Linux, or Windows and prints agent configuration.
+setup --agent also adds the MCP server to your selected agent. Start a new agent session afterward.
+setup without --agent prints configuration for manual registration.
 The extension is installed separately from apps/extension/dist.
 Default extension ID: ${DEVELOPMENT_EXTENSION_ID}
 Default bridge directory: ~/.agent-native
@@ -43,6 +47,8 @@ async function main() {
       help: { type: "boolean", short: "h" },
       "chrome-path": { type: "string" },
       "parent-window": { type: "string" },
+      agent: { type: "string" },
+      "agent-config": { type: "string" },
     },
   });
   if (!command || values.help || command === "help" || command === "--help" || command === "-h") {
@@ -51,8 +57,15 @@ async function main() {
   }
   if (command !== "native-host" && positionals.length)
     throw new Error("Unexpected positional arguments.");
+  if ((values.agent || values["agent-config"]) && command !== "setup" && command !== "install")
+    throw new Error("--agent and --agent-config are setup/install options.");
+  if (values["agent-config"] && !values.agent) throw new Error("--agent-config requires --agent.");
   switch (command) {
+    case "setup":
     case "install": {
+      const configureAgent = values.agent
+        ? await prepareAgent(parseAgent(values.agent), values["agent-config"])
+        : undefined;
       const installation = await install({
         home: values.home,
         extensionId: values["extension-id"],
@@ -61,8 +74,19 @@ async function main() {
         chromePath: values["chrome-path"],
       });
       const config = mcpConfiguration(values.home, installation);
+      const agent = configureAgent ? await configureAgent(config) : undefined;
       if (values.json) {
-        process.stdout.write(`${JSON.stringify({ installation, config }, null, 2)}\n`);
+        process.stdout.write(`${JSON.stringify({ installation, config, agent }, null, 2)}\n`);
+        break;
+      }
+      if (agent) {
+        process.stdout.write(
+          `Browser bridge registered. ${agent.agent === "claude" ? "Claude Code" : agent.agent === "codex" ? "Codex" : "OpenCode"} configured.\n${"backup" in agent && agent.backup ? `Previous agent configuration saved to ${agent.backup}\n` : ""}\nKeep Chrome open; the extension reconnects automatically. Start a new agent session.\nTry: Inspect my active Chrome tab and describe what I am seeing.\n`,
+        );
+        if (!installation.chrome)
+          process.stdout.write(
+            `Chrome was not detected. If the connection stays offline, run setup with --chrome-path pointing to its executable.\n`,
+          );
         break;
       }
       process.stdout.write(

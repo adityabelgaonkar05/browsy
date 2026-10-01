@@ -4,7 +4,19 @@ Follow the [quick start](../README.md#quick-start) for the default installation 
 
 ## Agent configuration
 
-The installer prints the appropriate command or JSON block for each agent. To retrieve it again:
+For automatic registration:
+
+```sh
+agent-native setup --agent codex
+# Or: agent-native setup --agent claude
+# Or: agent-native setup --agent opencode
+```
+
+From a source checkout, use `node packages/cli/dist/index.js` in place of `agent-native`. Setup registers the bridge and configures the selected agent. Keep Chrome open and start a new agent session. You can also pass `--agent` to `install`.
+
+Codex registration uses the installed `codex mcp add` command and requires Codex on PATH. Claude Code setup adds a user-scoped entry to `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`). OpenCode setup edits `$OPENCODE_CONFIG` when set, otherwise an existing `opencode.jsonc` or `opencode.json` under `$XDG_CONFIG_HOME/opencode` (default `~/.config/opencode`). Use `--agent-config FILE` for a specific Claude Code/OpenCode file. Only the `agent_native_browser` entry is updated. Existing settings and comments are preserved, changed files receive a private `.bak` copy, and malformed files are refused.
+
+For manual registration or other MCP clients, run setup without `--agent`. The installer prints the appropriate command or JSON block for each agent. To retrieve it again:
 
 ```sh
 node packages/cli/dist/index.js config
@@ -18,7 +30,7 @@ The JSON output contains `codexCommand`, `codexToml`, `claudeCommand`, `claude`,
 - **OpenCode:** merge the printed `opencode` block into your `opencode.json` and restart the agent. See [OpenCode MCP documentation](https://opencode.ai/docs/mcp-servers/).
 - **Other MCP clients:** use the JSON output's `command` and `args` as a stdio server definition.
 
-The installer prints configuration and does not modify agent configuration files.
+Agent settings change only when `--agent` is supplied. `config` always prints configuration without changing settings.
 
 ## What installation writes
 
@@ -73,7 +85,7 @@ After building:
 
 ```sh
 npm install -g ./packages/cli
-agent-native install
+agent-native setup --agent codex
 agent-native doctor
 ```
 

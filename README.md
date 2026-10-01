@@ -27,19 +27,21 @@ If pnpm is already installed, use `pnpm` instead of `npx --yes pnpm@10.30.3`.
 
 The extension can inspect normal HTTP/HTTPS website tabs. Chrome internal pages such as `chrome://extensions` are listed but cannot be inspected.
 
-### 3. Register the local bridge
+### 3. Connect your agent
 
 From the repository root:
 
 ```sh
-node packages/cli/dist/index.js install
+node packages/cli/dist/index.js setup --agent codex
 ```
+
+Use `--agent claude` or `--agent opencode` for those agents. This command registers the bridge and adds its MCP server to the selected agent. No separate MCP command or configuration editing is needed.
 
 On Windows, run these commands in PowerShell using a Windows Node.js installation, rather than WSL. The installer prints PowerShell commands on Windows.
 
-The installer registers the Native Messaging host and prints ready-to-run **Codex** and **Claude Code** commands, plus an **OpenCode** configuration block. Use the printed configuration for your agent; it contains the correct absolute paths for this installation.
+For another MCP client, run `node packages/cli/dist/index.js setup` without `--agent`. It prints commands for Codex/Claude Code and configuration for OpenCode and other clients.
 
-Reload the extension or click **Reconnect** in its control panel. **Terminal agents** should show **Connected**. Confirm the connection:
+The extension reconnects automatically while Chrome is open. **Terminal agents** should show **Connected**. If you need connection diagnostics:
 
 ```sh
 node packages/cli/dist/index.js doctor
@@ -47,7 +49,7 @@ node packages/cli/dist/index.js doctor
 
 ### 4. Use your agent
 
-Run the agent configuration command printed by the installer, then start a new agent session. Keep Chrome open and select a normal website tab.
+Start a new agent session after setup. Keep Chrome open and select a normal website tab.
 
 Try:
 
@@ -58,6 +60,17 @@ Or:
 > Find the open GitHub tab containing an issue about authentication and summarize it.
 
 Browser tools use your existing website sessions. The agent controls its own model, API credentials, and conversation context. The extension currently provides a manual control panel; built-in AI chat is not included.
+
+## npm CLI flow
+
+After building, the packaged CLI gives the two-command setup flow:
+
+```sh
+npm install -g ./packages/cli
+agent-native setup --agent codex
+```
+
+Install the Chrome extension separately and keep Chrome open. Choose `codex`, `claude`, or `opencode`; setup adds the browser tools for that agent. When the npm package is published, the registry package name replaces `./packages/cli`. Its final product name is still undecided. Setup runs explicitly and does not depend on npm lifecycle scripts.
 
 ## Browser tools
 
