@@ -16,6 +16,12 @@ i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; displ
 .section-label span { color: #59616b; font-size: 9px; }
 .card { border: 1px solid #2a3037; border-radius: 12px; background: #171b20; }
 .target { padding: 14px; margin-bottom: 23px; }
+.bridge { padding: 12px 14px; margin-bottom: 22px; }
+.bridge .row > span { display: flex; align-items: center; gap: 5px; color: #83909e; font-size: 10px; }
+.bridge.connected .row > span { color: #bcf48b; }
+.bridge p { color: #75818f; font-size: 10px; line-height: 1.6; margin-top: 9px; }
+.bridge details { margin-top: 8px; color: #697787; font-size: 10px; overflow-wrap: anywhere; }
+.bridge summary { cursor: pointer; }
 label { color: #b5bcc6; font-size: 11px; }
 .count { background: #29313a; color: #b7bec7; margin-left: 5px; padding: 2px 5px; border-radius: 4px; font-size: 10px; }
 button, input, textarea, select { font: inherit; }

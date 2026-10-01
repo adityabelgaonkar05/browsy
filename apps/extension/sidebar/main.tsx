@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { BrowserTab, PageSnapshot, ToolName, ToolParams, ToolResponse, ToolResults } from "@agent-native/shared";
+import type { BrowserTab, NativeConnectionStatus, PageSnapshot, ToolName, ToolParams, ToolResponse, ToolResults } from "@agent-native/shared";
 import "./styles.css";
 
 async function tool<K extends ToolName>(method: K, params: ToolParams[K]): Promise<ToolResults[K]> {
@@ -29,6 +29,7 @@ function App() {
   const [selector, setSelector] = useState("");
   const [maxLength, setMaxLength] = useState(100_000);
   const [elapsed, setElapsed] = useState<number>();
+  const [bridge, setBridge] = useState<NativeConnectionStatus>();
   const selection = useRef(tabId);
   selection.current = tabId;
   const tab = tabs.find((t) => t.id === tabId);
@@ -60,6 +61,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    const refresh = () => { void chrome.runtime.sendMessage({ channel: "bridge-status" }).then((status: NativeConnectionStatus) => { if (mounted) setBridge(status); }).catch(() => {}); };
+    refresh();
+    const timer = setInterval(refresh, 2_000);
+    return () => { mounted = false; clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
     setSnapshot(undefined); setHtml(""); setImage(""); setRef(""); setError("");
     setUrl(tabs.find((t) => t.id === tabId)?.url ?? "");
     setNotice("Ready to inspect this tab.");
@@ -87,7 +96,12 @@ function App() {
         <div className="brand"><span className="mark">a<span>↗</span></span><div><h1>Agent Native</h1><p>Your browser. Within reach.</p></div></div>
         <span className="local"><i />LOCAL</span>
       </header>
-      <div className="section-label">BROWSER CONTROL <span>MILESTONE 01</span></div>
+      <section className={`card bridge ${bridge?.connected ? "connected" : ""}`}>
+        <div className="row"><label>Terminal agents</label><span><i />{bridge?.connected ? "Connected" : "Not connected"}</span></div>
+        <div className="row"><p>{bridge?.connected ? "Your browser is available to local MCP agents." : "Register the local bridge with the CLI, then reconnect."}</p><button className="quiet" disabled={busy} onClick={() => void run("Bridge connection requested.", async () => { setBridge(await chrome.runtime.sendMessage({ channel: "bridge-status", reconnect: true })); })}>Reconnect ↻</button></div>
+        {!bridge?.connected && bridge?.error && <details><summary>Connection details</summary><p>{bridge.error}</p><p>Extension ID: {chrome.runtime.id}</p></details>}
+      </section>
+      <div className="section-label">BROWSER CONTROL <span>LOCAL TOOLS</span></div>
       <section className="card target">
         <div className="row"><label htmlFor="tab">Open tabs <span className="count">{tabs.length}</span></label><button className="quiet" disabled={busy} onClick={() => void run("Tabs refreshed.", refreshTabs)}>Refresh ↻</button></div>
         <select id="tab" value={tabId ?? ""} disabled={busy} onChange={(e) => setTabId(Number(e.target.value))}>

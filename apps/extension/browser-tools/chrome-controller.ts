@@ -1,5 +1,6 @@
 import { BrowserError } from "@agent-native/shared";
 import type { BrowserController, BrowserTab, HtmlResult, PageSnapshot, ScreenshotResult } from "@agent-native/shared";
+import { keyEvent } from "./keys";
 
 interface AXNode {
   nodeId: string;
@@ -99,6 +100,26 @@ export class ChromeBrowserController implements BrowserController {
       id: tab.id!, title: tab.title ?? "Untitled", url: tab.url ?? tab.pendingUrl ?? "",
       active: tab.active, windowId: tab.windowId,
     }));
+  }
+
+  async openTab(url: string): Promise<BrowserTab> {
+    const tab = await chrome.tabs.create({ url });
+    return { id: tab.id!, title: tab.title ?? "", url: tab.pendingUrl ?? tab.url ?? url, active: tab.active, windowId: tab.windowId };
+  }
+
+  focusTab(tabId: number): Promise<void> {
+    return this.serial(tabId, async () => {
+      const tab = await chrome.tabs.get(tabId).catch(() => { throw new BrowserError("TAB_NOT_FOUND", `Tab ${tabId} is no longer open.`); });
+      await chrome.tabs.update(tabId, { active: true });
+      await chrome.windows.update(tab.windowId, { focused: true });
+    });
+  }
+
+  closeTab(tabId: number): Promise<void> {
+    return this.serial(tabId, async () => {
+      await chrome.tabs.get(tabId).catch(() => { throw new BrowserError("TAB_NOT_FOUND", `Tab ${tabId} is no longer open.`); });
+      await chrome.tabs.remove(tabId);
+    });
   }
 
   snapshot(tabId: number): Promise<PageSnapshot> {
@@ -277,6 +298,41 @@ export class ChromeBrowserController implements BrowserController {
       this.invalidate(tabId);
       await chrome.tabs.update(tabId, { url });
     });
+  }
+
+  scroll(tabId: number, direction: "up" | "down" | "left" | "right", amount = 600): Promise<void> {
+    return this.serial(tabId, async () => {
+      await this.connect(tabId);
+      const x = direction === "left" ? -amount : direction === "right" ? amount : 0;
+      const y = direction === "up" ? -amount : direction === "down" ? amount : 0;
+      await this.command(tabId, "Runtime.evaluate", { expression: `window.scrollBy({left:${x},top:${y},behavior:'instant'})` });
+    });
+  }
+
+  pressKey(tabId: number, key: string): Promise<void> {
+    return this.serial(tabId, async () => {
+      const event = keyEvent(key);
+      await this.connect(tabId);
+      await this.command(tabId, "Input.dispatchKeyEvent", { ...event, type: "keyDown" });
+      const { text: _text, ...release } = event;
+      await this.command(tabId, "Input.dispatchKeyEvent", { ...release, type: "keyUp" });
+    });
+  }
+
+  back(tabId: number): Promise<void> {
+    return this.serial(tabId, async () => { await this.tab(tabId); this.invalidate(tabId); await chrome.tabs.goBack(tabId); });
+  }
+
+  forward(tabId: number): Promise<void> {
+    return this.serial(tabId, async () => { await this.tab(tabId); this.invalidate(tabId); await chrome.tabs.goForward(tabId); });
+  }
+
+  reload(tabId: number): Promise<void> {
+    return this.serial(tabId, async () => { await this.tab(tabId); this.invalidate(tabId); await chrome.tabs.reload(tabId); });
+  }
+
+  wait(tabId: number, milliseconds = 500): Promise<void> {
+    return this.serial(tabId, async () => { await this.tab(tabId); await new Promise((resolve) => setTimeout(resolve, milliseconds)); });
   }
 
   release(tabId: number): Promise<void> {

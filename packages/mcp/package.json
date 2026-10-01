@@ -1,0 +1,16 @@
+{
+  "name": "@agent-native/mcp",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@agent-native/shared": "workspace:*",
+    "@agent-native/native-bridge": "workspace:*",
+    "@modelcontextprotocol/server": "^2.2.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": { "@types/node": "^24.0.0", "typescript": "~5.9.3" }
+}
