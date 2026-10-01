@@ -8,15 +8,21 @@
     "build": "pnpm --filter @agent-native/extension build && pnpm --filter @agent-native/cli build",
     "dev": "pnpm --filter @agent-native/extension dev",
     "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm typecheck && pnpm build",
+    "test": "pnpm test:extension && pnpm test:terminal && pnpm test:package",
     "test:extension": "node scripts/test-extension.mjs",
-    "test:terminal": "node scripts/test-terminal.mjs"
+    "test:terminal": "node scripts/test-terminal.mjs",
+    "test:package": "node scripts/test-package.mjs"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "devDependencies": {
     "playwright": "^1.63.0",
     "esbuild": "^0.28.2",
-    "@modelcontextprotocol/client": "^2.2.0"
+    "@modelcontextprotocol/client": "^2.2.0",
+    "prettier": "3.9.9"
   }
 }

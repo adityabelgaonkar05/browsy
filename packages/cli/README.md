@@ -1,20 +1,29 @@
 # Agent Native Browser CLI
 
-Local macOS Native Messaging bridge and stdio MCP server for an existing Chrome session. Open source under MIT.
+Connect MCP terminal agents to your existing authenticated Chrome session through a local Native Messaging host. macOS, Node.js 22.12+, MIT licensed.
 
-This package must be built before installation from the repository. From the repository root:
+The package is built and installed from the [source repository](https://github.com/adityabelgaonkar05/ai-native-browser). It is not yet published to the npm registry.
+
+From the repository root:
 
 ```sh
-pnpm install
+pnpm install --frozen-lockfile
 pnpm build
 node packages/cli/dist/index.js install
-node packages/cli/dist/index.js doctor
 ```
 
-Load `apps/extension/dist` unpacked in Chrome. `install` registers the local host and prints exact Codex, Claude Code, and OpenCode configuration. It does not edit those agents' configuration files.
+Load `apps/extension/dist` unpacked in Chrome. Reload the extension after registration, run `doctor`, and use the agent configuration printed by the installer. See the repository [quick start](https://github.com/adityabelgaonkar05/ai-native-browser#quick-start).
 
-The executable is `agent-native`. Commands: `install`, `doctor`, `config`, `mcp`. Use `--home DIRECTORY` to choose a local bridge directory (default `~/.agent-native`). For an extension with another ID, pass `install --extension-id ID`.
+After building, `npm install -g ./packages/cli` installs the `agent-native` command.
 
-Chrome starts the native host automatically. MCP connects through a private Unix socket; no network control server or API key is required. The bundle includes runtime dependencies and uses the Node executable recorded during installation. Reinstall if you move this package or replace that Node installation.
+| Command     | Purpose                                                                           |
+| ----------- | --------------------------------------------------------------------------------- |
+| `install`   | Register the native host and print Codex, Claude Code, and OpenCode configuration |
+| `doctor`    | Check executable paths, registration, permissions, and extension connection       |
+| `config`    | Print agent configuration again                                                   |
+| `mcp`       | Start the stdio MCP server                                                        |
+| `uninstall` | Remove this installation's host registration and configuration                    |
 
-Use `config --json` for machine-readable agent configuration and `doctor --json` for diagnostics. Windows/Linux installation support is deferred.
+Use `--home DIRECTORY` consistently to select a bridge home (default `~/.agent-native`). `install` supports `--extension-id`, `--browser`, `--chrome-path`, and `--manifest-dir`. `install`, `doctor`, `config`, and `uninstall` support `--json`.
+
+The bundle includes runtime dependencies. Chrome starts the host with recorded absolute executable paths; no separate daemon or public network control endpoint is needed. Reinstall after moving the bundle or changing the recorded Node installation. Browser requests interrupted after sending are never replayed automatically.

@@ -7,10 +7,14 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
   base: "./",
-  plugins: [{
-    name: "extension-manifest",
-    closeBundle() { copyFileSync(resolve(root, "manifest.json"), resolve(root, "dist/manifest.json")); },
-  }],
+  plugins: [
+    {
+      name: "extension-manifest",
+      closeBundle() {
+        copyFileSync(resolve(root, "manifest.json"), resolve(root, "dist/manifest.json"));
+      },
+    },
+  ],
   build: {
     outDir: "dist",
     emptyOutDir: true,

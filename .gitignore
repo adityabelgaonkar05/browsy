@@ -4,3 +4,10 @@ dist/
 .codex/context.md
 *.tsbuildinfo
 packages/cli/LICENSE
+.env
+.env.*
+*.log
+*.tgz
+artifacts/
+coverage/
+.agent-native/

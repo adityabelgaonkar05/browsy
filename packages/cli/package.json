@@ -4,10 +4,40 @@
   "license": "MIT",
   "description": "Connect terminal MCP agents to your existing Chrome session locally.",
   "type": "module",
-  "bin": { "agent-native": "./dist/index.js" },
-  "files": ["dist", "README.md", "LICENSE"],
-  "engines": { "node": ">=22" },
-  "scripts": { "build": "tsc -p tsconfig.json && node ../../scripts/build-cli.mjs", "typecheck": "tsc -p tsconfig.json" },
+  "bin": {
+    "agent-native": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adityabelgaonkar05/ai-native-browser.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/adityabelgaonkar05/ai-native-browser#readme",
+  "bugs": {
+    "url": "https://github.com/adityabelgaonkar05/ai-native-browser/issues"
+  },
+  "keywords": [
+    "chrome",
+    "mcp",
+    "browser",
+    "agents",
+    "native-messaging"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node ../../scripts/build-cli.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "devDependencies": {
     "@agent-native/native-bridge": "workspace:*",
     "@agent-native/mcp": "workspace:*",

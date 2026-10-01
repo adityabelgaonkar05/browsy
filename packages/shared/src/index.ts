@@ -1,11 +1,27 @@
-export type ErrorCode =
-  | "INVALID_PARAMS" | "UNKNOWN_TOOL" | "TAB_NOT_FOUND" | "RESTRICTED_PAGE"
-  | "DEBUGGER_UNAVAILABLE" | "STALE_REF" | "ELEMENT_NOT_INTERACTABLE"
-  | "ELEMENT_OBSCURED" | "SELECTOR_NOT_FOUND" | "BROWSER_ERROR"
-  | "BRIDGE_UNAVAILABLE" | "BRIDGE_DISCONNECTED" | "TIMEOUT" | "BUSY" | "MESSAGE_TOO_LARGE";
+export const errorCodes = [
+  "INVALID_PARAMS",
+  "UNKNOWN_TOOL",
+  "TAB_NOT_FOUND",
+  "RESTRICTED_PAGE",
+  "DEBUGGER_UNAVAILABLE",
+  "STALE_REF",
+  "ELEMENT_NOT_INTERACTABLE",
+  "ELEMENT_OBSCURED",
+  "SELECTOR_NOT_FOUND",
+  "BROWSER_ERROR",
+  "BRIDGE_UNAVAILABLE",
+  "BRIDGE_DISCONNECTED",
+  "TIMEOUT",
+  "BUSY",
+  "MESSAGE_TOO_LARGE",
+] as const;
+export type ErrorCode = (typeof errorCodes)[number];
 
 export class BrowserError extends Error {
-  constructor(public readonly code: ErrorCode, message: string) {
+  constructor(
+    public readonly code: ErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = "BrowserError";
   }
@@ -58,7 +74,11 @@ export interface BrowserController {
   click(tabId: number, ref: string): Promise<void>;
   type(tabId: number, ref: string, text: string, replaceExisting?: boolean): Promise<void>;
   navigate(tabId: number, url: string): Promise<void>;
-  scroll(tabId: number, direction: "up" | "down" | "left" | "right", amount?: number): Promise<void>;
+  scroll(
+    tabId: number,
+    direction: "up" | "down" | "left" | "right",
+    amount?: number,
+  ): Promise<void>;
   pressKey(tabId: number, key: string): Promise<void>;
   back(tabId: number): Promise<void>;
   forward(tabId: number): Promise<void>;
@@ -109,19 +129,46 @@ export interface ToolResults {
 
 export type ToolName = keyof ToolParams;
 export type ToolRequest = {
-  [K in ToolName]: { channel: "browser-tools"; id: string; method: K; params: ToolParams[K] }
+  [K in ToolName]: { channel: "browser-tools"; id: string; method: K; params: ToolParams[K] };
 }[ToolName];
 
 export type ToolResponse<T = unknown> =
-  | { id: string; result: T }
-  | { id: string; error: { code: ErrorCode; message: string } };
+  { id: string; result: T } | { id: string; error: { code: ErrorCode; message: string } };
 
 export const toolNames: readonly ToolName[] = [
-  "browser_list_tabs", "browser_snapshot", "browser_get_html", "browser_screenshot",
-  "browser_click", "browser_type", "browser_navigate", "browser_release",
-  "browser_open_tab", "browser_focus_tab", "browser_close_tab", "browser_scroll",
-  "browser_press_key", "browser_back", "browser_forward", "browser_reload", "browser_wait",
+  "browser_list_tabs",
+  "browser_snapshot",
+  "browser_get_html",
+  "browser_screenshot",
+  "browser_click",
+  "browser_type",
+  "browser_navigate",
+  "browser_release",
+  "browser_open_tab",
+  "browser_focus_tab",
+  "browser_close_tab",
+  "browser_scroll",
+  "browser_press_key",
+  "browser_back",
+  "browser_forward",
+  "browser_reload",
+  "browser_wait",
 ];
+
+export function isToolName(value: unknown): value is ToolName {
+  return typeof value === "string" && toolNames.some((name) => name === value);
+}
+
+export function isToolResponse(value: unknown): value is ToolResponse {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const response = value as Record<string, unknown>;
+  if (typeof response.id !== "string" || !response.id || response.id.length > 100) return false;
+  if ("result" in response) return !("error" in response);
+  if (!response.error || typeof response.error !== "object" || Array.isArray(response.error))
+    return false;
+  const error = response.error as Record<string, unknown>;
+  return typeof error.message === "string" && errorCodes.some((code) => code === error.code);
+}
 
 export const NATIVE_HOST_NAME = "com.agent_native.browser";
 export const DEVELOPMENT_EXTENSION_ID = "dgejfddjompnibfocdkcjhjaifnogmeo";

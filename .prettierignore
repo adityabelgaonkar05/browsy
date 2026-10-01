@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.codex/
+.agents/
+pnpm-lock.yaml
+packages/cli/LICENSE
+artifacts/
+coverage/

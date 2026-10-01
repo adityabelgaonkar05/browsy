@@ -7,7 +7,10 @@ export class FrameDecoder {
   private payload?: Buffer;
   private payloadBytes = 0;
 
-  constructor(private maxBytes: number, private receive: (message: unknown) => void) {}
+  constructor(
+    private maxBytes: number,
+    private receive: (message: unknown) => void,
+  ) {}
 
   push(chunk: Buffer) {
     let offset = 0;
@@ -43,7 +46,8 @@ export class FrameDecoder {
 
 export function encodeFrame(message: unknown, maxBytes: number): Buffer {
   const body = Buffer.from(JSON.stringify(message), "utf8");
-  if (!body.length || body.length > maxBytes) throw new Error("Message exceeds transport size limit.");
+  if (!body.length || body.length > maxBytes)
+    throw new Error("Message exceeds transport size limit.");
   const frame = Buffer.allocUnsafe(4 + body.length);
   frame.writeUInt32LE(body.length, 0);
   body.copy(frame, 4);

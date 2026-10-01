@@ -1,19 +1,50 @@
 # Contributing
 
-Follow the build and installation instructions in [README.md](README.md). The current scope is browser control, macOS Native Messaging, and terminal MCP agents. Please discuss providers/chat or later milestones before implementing them.
+Use [README.md](README.md) for installation and [docs/architecture.md](docs/architecture.md) for the code structure. Development and the full integration suite target macOS.
 
-## Working on the extension
+## Local workflow
 
-- Put browser behavior in `apps/extension/browser-tools`, behind the shared `BrowserController` interface.
-- Keep the sidebar focused on displaying results and calling the shared tools.
-- Add protocol types to `packages/shared`; validate tool inputs at the dispatcher boundary.
-- Preserve compact default snapshots and explicit HTML/screenshot requests.
-- Keep credentials, browsing data, local profiles, and machine-specific paths out of commits. `.codex/context.md` is local development context and ignored by Git.
+Use Node.js 22.12 or newer and the pnpm version pinned in `package.json`. `.nvmrc` selects Node.js 24 for nvm users.
 
-Before submitting a change, run `pnpm typecheck`, `pnpm build`, `pnpm test:extension`, and `pnpm test:terminal` (macOS). The browser checks require `pnpm exec playwright install chromium --no-shell` once. The optional `--codex` check makes a model call; normal tests do not. Describe the resulting behavior, how you checked it, and any remaining limitations in the pull request.
+```sh
+pnpm install --frozen-lockfile
+pnpm check
+pnpm exec playwright install chromium --no-shell
+pnpm test
+```
 
-Keep Native Messaging/MCP stdout limited to protocol frames and use stderr for diagnostics. Avoid logging request contents or page data. Preserve request IDs across clients, respect frame limits, and fail interrupted actions without automatically replaying them. Build the CLI with `pnpm build`; runtime dependencies are bundled so Chrome can launch it without package resolution or a shell PATH dependency.
+Run `pnpm format` to apply the repository's formatting rules. Run `pnpm dev` to rebuild the extension on changes; reload it in Chrome after rebuilding. Changes to the CLI require `pnpm build`; reload the extension to restart its native host with the new bundle.
 
-For browser bugs, include the Chrome version, reproduction steps, the tool/error involved, and a minimal page if possible. Remove private page data from screenshots and tool results before sharing them.
+## Checks
 
-Contributions are licensed under the repository's [MIT license](LICENSE).
+| Command               | Coverage                                                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format:check`   | Formatting across source, configuration, and documentation                                                                             |
+| `pnpm typecheck`      | Strict TypeScript checks for every workspace                                                                                           |
+| `pnpm build`          | Production extension and standalone CLI bundle                                                                                         |
+| `pnpm test:extension` | Actual MV3 extension, control panel, snapshots, HTML, screenshots, typing/clicking, stale refs                                         |
+| `pnpm test:terminal`  | Actual Native Messaging and two stdio MCP clients, authenticated fixtures, routing, navigation, crash recovery, diagnostics, uninstall |
+| `pnpm test:package`   | npm archive contents, isolated global installation, CLI commands and MCP startup                                                       |
+
+Browser tests require the Playwright Chromium installed by the command above. Set `PLAYWRIGHT_BROWSERS_PATH` for both installation and testing when using a different browser cache. Fixtures and browser profiles are created and removed automatically.
+
+An optional check runs an actual Codex task using your existing Codex authentication:
+
+```sh
+node scripts/test-terminal.mjs --codex
+```
+
+This invokes a model and limits the temporary MCP configuration to tab listing and snapshots. It is not part of `pnpm test` or CI.
+
+## Code boundaries
+
+- Put browser behavior behind `BrowserController` in `apps/extension/browser-tools`.
+- Route control panel and MCP calls through the same dispatcher. The UI displays results and invokes tools.
+- Keep shared request/result types and protocol constants in `packages/shared`.
+- Keep Native Messaging and MCP stdout restricted to protocol frames. Send diagnostics to stderr and do not log page contents or credentials.
+- Preserve per-client request IDs, frame limits, queue limits, and errors for interrupted actions. Never automatically replay a sent action.
+- Keep generated builds, local profiles, credentials, and local development context out of commits.
+
+Include the resulting behavior and verification in pull requests. For bugs, provide reproduction steps, environment versions, and the relevant tool/error. Remove private browsing data from attachments. Feature requests for iframe support, providers, or other new capabilities should describe the use case before implementation.
+
+Contributions use the repository's [MIT license](LICENSE).

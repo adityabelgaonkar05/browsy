@@ -1,0 +1,30 @@
+name: Bug report
+description: Report a browser tool, connection, or setup problem.
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and what you expected. Remove private browsing data.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal public or local page when possible.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: macOS, Chrome, Node.js, and agent versions.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Include doctor output and the tool/error involved. Redact account names, private URLs, and local paths as needed.
+      render: text

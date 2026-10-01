@@ -24,7 +24,11 @@ const fixture = `<!doctype html><html lang="en"><head><title>Browser tools fixtu
 </body></html>`;
 const server = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/html" });
-  res.end(req.url === "/next" ? "<!doctype html><title>Next page</title><h1>Navigation complete</h1>" : fixture);
+  res.end(
+    req.url === "/next"
+      ? "<!doctype html><title>Next page</title><h1>Navigation complete</h1>"
+      : fixture,
+  );
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const url = `http://127.0.0.1:${server.address().port}`;
@@ -32,7 +36,10 @@ const profile = await mkdtemp(resolve(tmpdir(), "agent-native-test-"));
 const extension = resolve("apps/extension/dist");
 let context;
 let checks = 0;
-function passed(name) { checks++; console.log(`PASS ${name}`); }
+function passed(name) {
+  checks++;
+  console.log(`PASS ${name}`);
+}
 
 try {
   context = await chromium.launchPersistentContext(profile, {
@@ -40,7 +47,7 @@ try {
     headless: true,
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
-  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent("serviceworker");
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
   const extensionId = new URL(worker.url()).host;
   const page = await context.newPage();
   const pageErrors = [];
@@ -56,9 +63,17 @@ try {
   passed("unpacked MV3 extension loads and renders React control panel");
 
   async function request(method, params = {}) {
-    return panel.evaluate(async ({ method, params }) => {
-      return chrome.runtime.sendMessage({ channel: "browser-tools", id: crypto.randomUUID(), method, params });
-    }, { method, params });
+    return panel.evaluate(
+      async ({ method, params }) => {
+        return chrome.runtime.sendMessage({
+          channel: "browser-tools",
+          id: crypto.randomUUID(),
+          method,
+          params,
+        });
+      },
+      { method, params },
+    );
   }
   async function tool(method, params = {}) {
     const response = await request(method, params);
@@ -89,7 +104,10 @@ try {
   assert.equal(limited.truncated, true);
   const selected = await tool("browser_get_html", { tabId, selector: "h1" });
   assert.equal(selected.html, "<h1>Authenticated workspace</h1>");
-  assert.equal((await request("browser_get_html", { tabId, selector: ".missing" })).error.code, "SELECTOR_NOT_FOUND");
+  assert.equal(
+    (await request("browser_get_html", { tabId, selector: ".missing" })).error.code,
+    "SELECTOR_NOT_FOUND",
+  );
   passed("returns raw HTML, selected HTML and explicit truncation");
 
   const image = await tool("browser_screenshot", { tabId });
@@ -102,13 +120,23 @@ try {
   await writeFile(resolve(tmpdir(), "agent-native-viewport.png"), png);
   passed("captures viewport as directly usable PNG image data");
 
-  await tool("browser_type", { tabId, ref: ref("Message"), text: "Hello Chrome", replaceExisting: true });
+  await tool("browser_type", {
+    tabId,
+    ref: ref("Message"),
+    text: "Hello Chrome",
+    replaceExisting: true,
+  });
   assert.equal(await page.locator("#message").inputValue(), "Hello Chrome");
   await tool("browser_type", { tabId, ref: ref("Message"), text: "!", replaceExisting: false });
   assert.equal(await page.locator("#message").inputValue(), "Hello Chrome!");
   await tool("browser_type", { tabId, ref: ref("Notes"), text: "", replaceExisting: true });
   assert.equal(await page.locator("#notes").inputValue(), "");
-  await tool("browser_type", { tabId, ref: ref("Rich editor"), text: "New draft", replaceExisting: true });
+  await tool("browser_type", {
+    tabId,
+    ref: ref("Rich editor"),
+    text: "New draft",
+    replaceExisting: true,
+  });
   await tool("browser_type", { tabId, ref: ref("Rich editor"), text: "!", replaceExisting: false });
   assert.equal(await page.locator("#editor").innerText(), "New draft!");
   passed("types into snapshot input refs, including replace and append");
@@ -120,13 +148,26 @@ try {
   passed("clicks snapshot refs using trusted input, including shadow DOM");
 
   await page.locator("#save").evaluate((element) => element.remove());
-  assert.equal((await request("browser_click", { tabId, ref: ref("Save message") })).error.code, "STALE_REF");
+  assert.equal(
+    (await request("browser_click", { tabId, ref: ref("Save message") })).error.code,
+    "STALE_REF",
+  );
   await tool("browser_snapshot", { tabId });
-  assert.equal((await request("browser_type", { tabId, ref: ref("Message"), text: "stale" })).error.code, "STALE_REF");
+  assert.equal(
+    (await request("browser_type", { tabId, ref: ref("Message"), text: "stale" })).error.code,
+    "STALE_REF",
+  );
   const renamedSnapshot = await tool("browser_snapshot", { tabId });
-  const renamedRef = renamedSnapshot.elements.find((element) => element.name === "Shadow clicked").ref;
-  await page.getByRole("button", { name: "Shadow clicked" }).evaluate((element) => { element.textContent = "Renamed action"; });
-  assert.equal((await request("browser_click", { tabId, ref: renamedRef })).error.code, "STALE_REF");
+  const renamedRef = renamedSnapshot.elements.find(
+    (element) => element.name === "Shadow clicked",
+  ).ref;
+  await page.getByRole("button", { name: "Shadow clicked" }).evaluate((element) => {
+    element.textContent = "Renamed action";
+  });
+  assert.equal(
+    (await request("browser_click", { tabId, ref: renamedRef })).error.code,
+    "STALE_REF",
+  );
   passed("removed elements and superseded snapshots return STALE_REF");
 
   await tool("browser_navigate", { tabId, url: `${url}/next` });
@@ -134,14 +175,26 @@ try {
   await page.getByRole("heading", { name: "Navigation complete" }).waitFor();
   const nextSnapshot = await tool("browser_snapshot", { tabId });
   assert.match(nextSnapshot.text, /Navigation complete/);
-  assert.equal((await request("browser_click", { tabId, ref: renamedRef })).error.code, "STALE_REF");
+  assert.equal(
+    (await request("browser_click", { tabId, ref: renamedRef })).error.code,
+    "STALE_REF",
+  );
   passed("navigates the same tab and snapshots the new document");
 
-  assert.equal((await request("browser_navigate", { tabId, url: "javascript:alert(1)" })).error.code, "INVALID_PARAMS");
+  assert.equal(
+    (await request("browser_navigate", { tabId, url: "javascript:alert(1)" })).error.code,
+    "INVALID_PARAMS",
+  );
   assert.equal((await request("browser_snapshot", { tabId: -1 })).error.code, "INVALID_PARAMS");
-  assert.equal((await request("browser_snapshot", { tabId: 2147483647 })).error.code, "TAB_NOT_FOUND");
+  assert.equal(
+    (await request("browser_snapshot", { tabId: 2147483647 })).error.code,
+    "TAB_NOT_FOUND",
+  );
   const internal = await worker.evaluate(() => chrome.tabs.create({ url: "chrome://newtab/" }));
-  assert.equal((await request("browser_snapshot", { tabId: internal.id })).error.code, "RESTRICTED_PAGE");
+  assert.equal(
+    (await request("browser_snapshot", { tabId: internal.id })).error.code,
+    "RESTRICTED_PAGE",
+  );
   await tool("browser_navigate", { tabId: internal.id, url: `${url}/next` });
   await worker.evaluate((id) => chrome.tabs.remove(id), internal.id);
   passed("invalid parameters and missing tabs return structured errors");
@@ -154,7 +207,9 @@ try {
   await panel.screenshot({ path: resolve(tmpdir(), "agent-native-panel.png"), fullPage: true });
   await tool("browser_release", { tabId });
   passed("manual sidebar buttons inspect and screenshot a selected tab");
-  console.log(`\n${checks} browser checks passed. Screenshot: ${resolve(tmpdir(), "agent-native-viewport.png")}`);
+  console.log(
+    `\n${checks} browser checks passed. Screenshot: ${resolve(tmpdir(), "agent-native-viewport.png")}`,
+  );
 } finally {
   await context?.close();
   await new Promise((resolve) => server.close(resolve));
