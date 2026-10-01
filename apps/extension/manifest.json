@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Agent Native Browser",
+  "version": "0.1.0",
+  "description": "Local browser tools for your existing Chrome session. Milestone 1 control panel.",
+  "minimum_chrome_version": "118",
+  "permissions": ["tabs", "debugger", "sidePanel"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Open browser control panel" },
+  "side_panel": { "default_path": "sidebar/index.html" },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

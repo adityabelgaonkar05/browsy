@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["chrome", "node"] },
+  "include": ["background", "browser-tools", "sidebar", "vite.config.ts"]
+}

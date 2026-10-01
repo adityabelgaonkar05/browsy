@@ -1,0 +1,10 @@
+{
+  "name": "@agent-native/shared",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "devDependencies": { "typescript": "~5.9.3" }
+}

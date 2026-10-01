@@ -1,0 +1,19 @@
+{
+  "name": "agent-native-browser",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "packageManager": "pnpm@10.30.3",
+  "scripts": {
+    "build": "pnpm --filter @agent-native/extension build",
+    "dev": "pnpm --filter @agent-native/extension dev",
+    "typecheck": "pnpm -r typecheck",
+    "test:extension": "node scripts/test-extension.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
