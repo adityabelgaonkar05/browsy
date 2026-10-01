@@ -1,6 +1,6 @@
 # Agent Native Browser CLI
 
-Connect MCP terminal agents to your existing authenticated Chrome session through a local Native Messaging host. macOS, Node.js 22.12+, MIT licensed.
+Connect MCP terminal agents to your existing authenticated Chrome session through a local Native Messaging host. macOS, Linux, Windows 10/11, Node.js 22.12+, MIT licensed.
 
 The package is built and installed from the [source repository](https://github.com/adityabelgaonkar05/ai-native-browser). It is not yet published to the npm registry.
 
@@ -11,6 +11,8 @@ pnpm install --frozen-lockfile
 pnpm build
 node packages/cli/dist/index.js install
 ```
+
+On Windows use PowerShell and Windows Node.js, not WSL.
 
 Load `apps/extension/dist` unpacked in Chrome. Reload the extension after registration, run `doctor`, and use the agent configuration printed by the installer. See the repository [quick start](https://github.com/adityabelgaonkar05/ai-native-browser#quick-start).
 

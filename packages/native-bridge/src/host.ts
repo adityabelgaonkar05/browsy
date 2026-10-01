@@ -1,5 +1,5 @@
 import { createServer } from "node:net";
-import type { Socket } from "node:net";
+import type { Duplex } from "node:stream";
 import { mkdir, chmod, lstat, open, readFile, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import type { Readable, Writable } from "node:stream";
@@ -13,9 +13,10 @@ import {
 import type { ToolResponse, ErrorCode } from "@agent-native/shared";
 import { FrameDecoder, writeFrame } from "./framing";
 import { bridgePaths } from "./paths";
+import { protectDirectory, windowsPipeServer } from "./windows";
 
 interface Pending {
-  socket: Socket;
+  socket: Duplex;
   id: string;
   timer: ReturnType<typeof setTimeout>;
 }
@@ -78,11 +79,12 @@ export async function startNativeHost(options: {
   const directory = await lstat(paths.directory);
   if (!directory.isDirectory() || directory.isSymbolicLink())
     throw new Error("Bridge home must be a real directory.");
-  await chmod(paths.directory, 0o700);
+  if (process.platform === "win32") await protectDirectory(paths.directory);
+  else await chmod(paths.directory, 0o700);
   const unlock = await claimLock(paths.lock);
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
-  const clients = new Set<Socket>();
+  const clients = new Set<Duplex>();
   const pending = new Map<string, Pending>();
   let connected = false;
   let stopped = false;
@@ -90,18 +92,18 @@ export async function startNativeHost(options: {
   let stopPromise: Promise<void> | undefined;
   const requestTimeout = options.requestTimeout ?? 45_000;
 
-  function respond(socket: Socket, response: ToolResponse) {
+  function respond(socket: Duplex, response: ToolResponse) {
     try {
       writeFrame(socket, response, MAX_RESPONSE_BYTES);
     } catch {
       socket.destroy();
     }
   }
-  function fail(socket: Socket, id: string, code: ErrorCode, message: string) {
+  function fail(socket: Duplex, id: string, code: ErrorCode, message: string) {
     respond(socket, { id, error: { code, message } });
   }
 
-  const server = createServer((socket) => {
+  const onConnection = (socket: Duplex) => {
     if (clients.size >= 16) {
       socket.destroy();
       return;
@@ -188,7 +190,10 @@ export async function startNativeHost(options: {
         socket.destroy();
       }
     });
-  });
+  };
+  let server:
+    | { close(callback: () => void): unknown; on(event: string, callback: () => void): unknown }
+    | undefined;
 
   async function stop() {
     if (stopPromise) return stopPromise;
@@ -200,8 +205,8 @@ export async function startNativeHost(options: {
       for (const work of pending.values()) clearTimeout(work.timer);
       pending.clear();
       for (const socket of clients) socket.destroy();
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-      if (ownsSocket) await unlink(paths.socket).catch(() => {});
+      if (server) await new Promise<void>((resolve) => server!.close(resolve));
+      if (ownsSocket && process.platform !== "win32") await unlink(paths.socket).catch(() => {});
       await unlock();
       process.off("SIGTERM", onSignal);
       process.off("SIGINT", onSignal);
@@ -244,27 +249,36 @@ export async function startNativeHost(options: {
       void stop();
     }
   }
-  const handshakeTimer = setTimeout(() => {
-    process.stderr.write("Extension handshake timed out.\n");
-    void stop();
-  }, 10_000);
+  const handshakeTimer = setTimeout(
+    () => {
+      process.stderr.write("Extension handshake timed out.\n");
+      void stop();
+    },
+    process.platform === "win32" ? 30_000 : 10_000,
+  );
 
   try {
-    // The exclusive lock owns cleanup. Never replace an arbitrary file at the socket path.
-    const existing = await lstat(paths.socket).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== "ENOENT") throw error;
-    });
-    if (existing) {
-      if (!existing.isSocket())
-        throw new Error("A non-socket file exists at the bridge socket path.");
-      await unlink(paths.socket);
+    if (process.platform === "win32") {
+      server = await windowsPipeServer(paths.socket, onConnection);
+    } else {
+      // The exclusive lock owns cleanup. Never replace an arbitrary file.
+      const existing = await lstat(paths.socket).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      });
+      if (existing) {
+        if (!existing.isSocket())
+          throw new Error("A non-socket file exists at the bridge socket path.");
+        await unlink(paths.socket);
+      }
+      const unix = createServer(onConnection);
+      server = unix;
+      await new Promise<void>((resolve, reject) => {
+        unix.once("error", reject);
+        unix.listen(paths.socket, resolve);
+      });
+      ownsSocket = true;
+      await chmod(paths.socket, 0o600);
     }
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(paths.socket, resolve);
-    });
-    ownsSocket = true;
-    await chmod(paths.socket, 0o600);
     server.on("error", () => {
       void stop();
     });

@@ -28,4 +28,4 @@ Chrome displays a debugger banner while the extension controls a tab. Canceling 
 
 If an unpacked build's ID changed, remove its old entry from `chrome://extensions` and load the rebuilt `apps/extension/dist`. The current development build has a fixed public key/ID, so ordinary rebuilds preserve its registration.
 
-For bugs, include the Chrome/macOS/Node versions, reproduction steps, tool/error, and redacted doctor output. A minimal local page is more useful than private website data.
+For bugs, include the Chrome/OS/Node versions, reproduction steps, tool/error, and redacted doctor output. A minimal local page is more useful than private website data.

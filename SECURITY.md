@@ -4,7 +4,8 @@ Agent Native Browser trusts software running as the current OS user to control t
 
 ## Local control boundary
 
-- Control uses a Unix socket inside a private `0700` directory; the socket uses `0600`.
+- macOS/Linux control uses a Unix socket inside a private `0700` directory; the socket uses `0600`.
+- Windows control uses a named pipe whose protected ACL grants the current user access and explicitly denies the Network SID. The bridge directory grants only the current user and SYSTEM access. Windows PowerShell 5.1 supplies the OS pipe helper; no downloaded helper or listening TCP port is needed.
 - No TCP/LAN/public control server or remote debugging port is opened.
 - Chrome's native registration permits the configured extension origin, and the host validates its handshake.
 - Extension runtime calls are accepted from this extension's own pages. No content scripts or external message handler are exposed.
@@ -18,6 +19,6 @@ Snapshots omit input value fields. Raw HTML and screenshots can contain private 
 
 ## Current scope
 
-Registration supports macOS. Browser inspection is limited to HTTP/HTTPS main documents, including accessible shadow DOM controls; internal Chrome pages and file URLs are unsupported. The project does not provide isolation from other trusted programs running as the same user or a granular per-website permission system.
+Registration supports macOS, Linux, and Windows. Browser inspection is limited to HTTP/HTTPS main documents, including accessible shadow DOM controls; internal Chrome pages and file URLs are unsupported. The project does not provide isolation from other trusted programs running as the same user or a granular per-website permission system.
 
 Report implementation problems with a minimal reproduction using test data. Keep real credentials, private page content, and third-party exploit details out of public reports.

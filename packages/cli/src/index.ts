@@ -20,7 +20,7 @@ Commands:
   agent-native mcp [--home DIRECTORY]
   agent-native uninstall [--home DIRECTORY] [--json]
 
-install registers the macOS Native Messaging host and prints agent configuration.
+install registers the Native Messaging host on macOS, Linux, or Windows and prints agent configuration.
 The extension is installed separately from apps/extension/dist.
 Default extension ID: ${DEVELOPMENT_EXTENSION_ID}
 Default bridge directory: ~/.agent-native
@@ -42,6 +42,7 @@ async function main() {
       json: { type: "boolean" },
       help: { type: "boolean", short: "h" },
       "chrome-path": { type: "string" },
+      "parent-window": { type: "string" },
     },
   });
   if (!command || values.help || command === "help" || command === "--help" || command === "-h") {

@@ -4,7 +4,7 @@ import { createConnection } from "node:net";
 import { PassThrough } from "node:stream";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { chmod, mkdtemp, rm, readFile, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdtemp, rm, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -14,7 +14,7 @@ import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 
 const exec = promisify(execFile);
-const root = await mkdtemp(resolve("/tmp", "an-terminal-"));
+const root = await mkdtemp(join(process.platform === "darwin" ? "/tmp" : tmpdir(), "an-terminal-"));
 const home = join(root, "bridge's home");
 const profile = join(root, "profile");
 const cli = resolve("packages/cli/dist/index.js");
@@ -28,9 +28,20 @@ await build({
   format: "esm",
   target: "node22",
 });
-const { BridgeClient, startNativeHost, FrameDecoder, encodeFrame, bridgePaths } = await import(
-  pathToFileURL(modulePath)
-);
+await copyFile("packages/native-bridge/src/windows-pipe.cs", join(root, "windows-pipe.cs"));
+const {
+  BridgeClient,
+  startNativeHost,
+  FrameDecoder,
+  encodeFrame,
+  bridgePaths,
+  registeredManifest,
+  registerManifest,
+  unregisterManifest,
+  registryKey,
+  directoryIsPrivate,
+  pipeIsPrivate,
+} = await import(pathToFileURL(modulePath));
 const extensionId = JSON.parse(await readFile(resolve("apps/extension/manifest.json"), "utf8")).key;
 const { createHash } = await import("node:crypto");
 const id = createHash("sha256")
@@ -38,6 +49,11 @@ const id = createHash("sha256")
   .digest("hex")
   .slice(0, 32)
   .replace(/[0-9a-f]/g, (char) => String.fromCharCode(97 + parseInt(char, 16)));
+const windows = process.platform === "win32";
+const registrationKey = windows ? registryKey("chrome") : undefined;
+const previousRegistration = registrationKey
+  ? await registeredManifest(registrationKey)
+  : undefined;
 let checks = 0;
 function passed(name) {
   checks++;
@@ -141,8 +157,13 @@ try {
     );
     assert.equal((await first.request("browser_click", { never: true })).error.code, "TIMEOUT");
     assert.equal((await first.status()).connected, true);
-    assert.equal((await stat(bridgePaths(home).directory)).mode & 0o777, 0o700);
-    assert.equal((await stat(bridgePaths(home).socket)).mode & 0o777, 0o600);
+    if (windows) {
+      assert.equal(await directoryIsPrivate(bridgePaths(home).directory), true);
+      assert.equal(await pipeIsPrivate(bridgePaths(home).socket), true);
+    } else {
+      assert.equal((await stat(bridgePaths(home).directory)).mode & 0o777, 0o700);
+      assert.equal((await stat(bridgePaths(home).socket)).mode & 0o777, 0o600);
+    }
     await assert.rejects(
       startNativeHost({
         home,
@@ -197,8 +218,10 @@ try {
   assert.equal(installation.installation.extensionId, id);
   const manifest = JSON.parse(await readFile(installation.installation.manifest, "utf8"));
   assert.deepEqual(manifest.allowed_origins, [`chrome-extension://${id}/`]);
-  assert.equal((await stat(manifest.path)).mode & 0o777, 0o700);
-  assert.equal((await stat(join(home, "config.json"))).mode & 0o777, 0o600);
+  if (!windows) {
+    assert.equal((await stat(manifest.path)).mode & 0o777, 0o700);
+    assert.equal((await stat(join(home, "config.json"))).mode & 0o777, 0o600);
+  }
   const config = JSON.parse(
     (await exec(process.execPath, [cli, "config", "--home", home, "--json"])).stdout,
   );
@@ -328,20 +351,22 @@ try {
     (await exec(process.execPath, [cli, "doctor", "--home", home, "--json"])).stdout,
   );
   assert.equal(diagnostic.ok, true);
-  await chmod(bridgePaths(home).socket, 0o666);
-  await assert.rejects(
-    exec(process.execPath, [cli, "doctor", "--home", home, "--json"]),
-    (error) => {
-      assert.equal(error.code, 1);
-      assert.ok(
-        JSON.parse(error.stdout).checks.some(
-          (check) => check.name === "Socket permissions" && !check.ok,
-        ),
-      );
-      return true;
-    },
-  );
-  await chmod(bridgePaths(home).socket, 0o600);
+  if (!windows) {
+    await chmod(bridgePaths(home).socket, 0o666);
+    await assert.rejects(
+      exec(process.execPath, [cli, "doctor", "--home", home, "--json"]),
+      (error) => {
+        assert.equal(error.code, 1);
+        assert.ok(
+          JSON.parse(error.stdout).checks.some(
+            (check) => check.name === "Socket permissions" && !check.ok,
+          ),
+        );
+        return true;
+      },
+    );
+    await chmod(bridgePaths(home).socket, 0o600);
+  }
   // SIGKILL deliberately leaves stale lock/socket files, testing automatic recovery.
   process.kill(initialStatus.pid, "SIGKILL");
   const recovered = await eventually(async () => {
@@ -428,5 +453,12 @@ try {
   input.destroy();
   output.destroy();
   if (server) await new Promise((resolve) => server.close(resolve));
+  if (registrationKey) {
+    const current = await registeredManifest(registrationKey);
+    if (current && current !== previousRegistration && !current.startsWith(root))
+      throw new Error("Native registration changed during tests; refusing to overwrite it.");
+    if (previousRegistration) await registerManifest(registrationKey, previousRegistration);
+    else if (current) await unregisterManifest(registrationKey);
+  }
   await rm(root, { recursive: true, force: true });
 }

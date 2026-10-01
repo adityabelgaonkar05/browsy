@@ -19,7 +19,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: macOS, Chrome, Node.js, and agent versions.
+      description: Operating system, Chrome, Node.js, and agent versions.
     validations:
       required: true
   - type: textarea

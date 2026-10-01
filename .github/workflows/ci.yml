@@ -14,12 +14,13 @@ concurrency:
 
 jobs:
   verify:
-    name: macOS / Node ${{ matrix.node }}
-    runs-on: macos-14
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
+        os: [macos-14, ubuntu-24.04, windows-2022]
         node: [22, 24]
     steps:
       - uses: actions/checkout@v7
@@ -34,5 +35,5 @@ jobs:
           run_install: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - run: pnpm exec playwright install chromium --no-shell
+      - run: pnpm exec playwright install chromium --no-shell --with-deps
       - run: pnpm test

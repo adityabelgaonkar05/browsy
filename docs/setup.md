@@ -1,6 +1,6 @@
 # Setup reference
 
-Follow the [quick start](../README.md#quick-start) for the default macOS installation.
+Follow the [quick start](../README.md#quick-start) for the default installation on macOS, Linux, or Windows.
 
 ## Agent configuration
 
@@ -25,20 +25,34 @@ The installer prints configuration and does not modify agent configuration files
 | Location                                                                                         | Purpose                                                            |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
 | `~/.agent-native/config.json`                                                                    | Recorded executable paths, extension ID, and registration location |
-| `~/.agent-native/native-host`                                                                    | Executable launcher used by Chrome                                 |
+| `~/.agent-native/native-host` (Windows: `native-host.cmd`)                                       | Executable launcher used by Chrome                                 |
 | `~/.agent-native/browser.sock`                                                                   | Unix socket, created while the native host is running              |
 | `~/.agent-native/bridge.lock`                                                                    | Native host process ownership                                      |
-| `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.agent_native.browser.json` | Chrome's native host registration                                  |
+| `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.agent_native.browser.json` | Chrome's native host registration (macOS example)                  |
 
-The bridge directory uses mode `0700`; its configuration, socket, and registration use `0600`; its launcher uses `0700`. Chrome starts and stops the native host. Keep the CLI bundle and recorded Node installation at their registered locations.
+On macOS/Linux, the bridge directory uses mode `0700`; its configuration, socket, and registration use `0600`; its launcher uses `0700`. Chrome starts and stops the native host. Keep the CLI bundle and recorded Node installation at their registered locations.
+
+### Platform differences
+
+| Platform      | Native host discovery                                                                                                                       | Local transport                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| macOS         | `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`                                                                         | `~/.agent-native/browser.sock`      |
+| Linux         | `$XDG_CONFIG_HOME/google-chrome/NativeMessagingHosts/` (defaults to `~/.config`)                                                            | `~/.agent-native/browser.sock`      |
+| Windows 10/11 | `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.agent_native.browser`, pointing to the JSON manifest in `%USERPROFILE%\.agent-native` | `\\.\pipe\agent-native-<home hash>` |
+
+Windows uses `native-host.cmd`, a protected bridge directory, and a protected named pipe. No administrator rights are required. Use Windows Node.js and PowerShell, not WSL, for a Windows Chrome session. Printed Windows agent commands use PowerShell quoting. The system Windows PowerShell 5.1 installation is required for the pipe helper.
+
+Linux uses a shell launcher and needs no background service. Snap/Flatpak browser sandboxes can block a host outside the browser sandbox; use a regular Chrome/Chromium installation with Native Messaging support. `--chrome-path` can select a custom binary but cannot bypass a browser’s sandbox restrictions.
+
+Chromium uses its own registration directory/key. Chrome for Testing uses `google-chrome-for-testing` on Linux and `ChromeForTesting` on macOS with Chrome 146+; older versions share normal Chrome’s locations. On Windows it uses Chrome’s registry key.
 
 ## Alternate installations
 
 All commands accept `--home` to use a different bridge directory. Use the same value for `install`, `config`, `doctor`, `mcp`, and `uninstall`. The installer includes it in the generated agent commands.
 
-For a browser installed outside `/Applications` or `~/Applications`, pass `--chrome-path` pointing to the executable inside its application bundle. `install --help` lists the options.
+For a browser outside the standard installation locations, pass `--chrome-path` pointing to its executable (inside the application bundle on macOS). `install --help` lists the options.
 
-`--browser chrome-for-testing` and `--browser chromium` select those browsers' macOS registration locations. `--manifest-dir` selects the NativeMessagingHosts directory of an isolated browser profile. Only one running profile can own a bridge home.
+`--browser chrome-for-testing` and `--browser chromium` select those browsers' registration locations. `--manifest-dir` overrides the manifest directory. On Windows, registration still uses the current user’s registry; it is not isolated by Chrome profile. Only one running profile can own a bridge home.
 
 The default extension ID is `dgejfddjompnibfocdkcjhjaifnogmeo`, anchored by the public key in its manifest. Different builds can use `install --extension-id` with the ID shown in `chrome://extensions`. The repository contains no private signing key.
 

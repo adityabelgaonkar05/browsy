@@ -2,15 +2,27 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
-import { resolve, join } from "node:path";
+import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 
 const exec = promisify(execFile);
-const root = await mkdtemp(resolve("/tmp", "an-package-"));
+const root = await mkdtemp(join((await import("node:os")).tmpdir(), "an-package-"));
 const prefix = join(root, "package install");
 const home = join(root, "bridge");
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+const npm = process.platform === "win32" ? process.execPath : "npm";
+const npmArgs =
+  process.platform === "win32"
+    ? [
+        join(
+          (await import("node:path")).dirname(process.execPath),
+          "node_modules",
+          "npm",
+          "bin",
+          "npm-cli.js",
+        ),
+      ]
+    : [];
 const cache = join(root, "npm-cache");
 let client;
 
@@ -18,6 +30,7 @@ try {
   const packed = JSON.parse(
     (
       await exec(npm, [
+        ...npmArgs,
         "pack",
         "./packages/cli",
         "--pack-destination",
@@ -30,10 +43,12 @@ try {
   )[0];
   const files = packed.files.map((file) => file.path);
   assert.ok(files.includes("dist/index.js"));
+  assert.ok(files.includes("dist/windows-pipe.cs"));
   assert.ok(files.includes("LICENSE"));
   assert.ok(files.includes("README.md"));
   assert.ok(!files.some((file) => /(^|\/)(src|node_modules|\.codex|\.env)(\/|$)/.test(file)));
   await exec(npm, [
+    ...npmArgs,
     "install",
     "--global",
     "--prefix",
@@ -44,7 +59,15 @@ try {
     join(root, packed.filename),
   ]);
   const cli = await realpath(
-    join(prefix, "lib", "node_modules", "@agent-native", "cli", "dist", "index.js"),
+    join(
+      prefix,
+      ...(process.platform === "win32" ? [] : ["lib"]),
+      "node_modules",
+      "@agent-native",
+      "cli",
+      "dist",
+      "index.js",
+    ),
   );
   const bundle = await readFile(cli, "utf8");
   assert.ok(

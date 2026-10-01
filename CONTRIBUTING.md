@@ -1,6 +1,6 @@
 # Contributing
 
-Use [README.md](README.md) for installation and [docs/architecture.md](docs/architecture.md) for the code structure. Development and the full integration suite target macOS.
+Use [README.md](README.md) for installation and [docs/architecture.md](docs/architecture.md) for the code structure. Development and CI cover macOS, Linux, and Windows with Node.js 22 and 24.
 
 ## Local workflow
 
@@ -26,7 +26,7 @@ Run `pnpm format` to apply the repository's formatting rules. Run `pnpm dev` to 
 | `pnpm test:terminal`  | Actual Native Messaging and two stdio MCP clients, authenticated fixtures, routing, navigation, crash recovery, diagnostics, uninstall |
 | `pnpm test:package`   | npm archive contents, isolated global installation, CLI commands and MCP startup                                                       |
 
-Browser tests require the Playwright Chromium installed by the command above. Set `PLAYWRIGHT_BROWSERS_PATH` for both installation and testing when using a different browser cache. Fixtures and browser profiles are created and removed automatically.
+Browser tests require the Playwright Chromium installed by the command above. Set `PLAYWRIGHT_BROWSERS_PATH` for both installation and testing when using a different browser cache. Fixtures and browser profiles are created and removed automatically. Windows terminal tests temporarily replace the current user’s Chrome native-host registry value and restore it in cleanup; close other Chrome profiles first. On Linux, install browser dependencies with `pnpm exec playwright install chromium --no-shell --with-deps`.
 
 An optional check runs an actual Codex task using your existing Codex authentication:
 

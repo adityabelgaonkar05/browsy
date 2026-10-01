@@ -1,10 +1,21 @@
 import { access, chmod, lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, isAbsolute } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
-import { BridgeClient, bridgePaths, nativeManifestPath } from "@agent-native/native-bridge";
+import {
+  BridgeClient,
+  bridgePaths,
+  nativeManifestPath,
+  protectDirectory,
+  directoryIsPrivate,
+  pipeIsPrivate,
+  registryKey,
+  registeredManifest,
+  registerManifest,
+  unregisterManifest,
+} from "@agent-native/native-bridge";
 import {
   BRIDGE_PROTOCOL_VERSION,
   DEVELOPMENT_EXTENSION_ID,
@@ -18,6 +29,7 @@ export interface Installation {
   cli: string;
   manifest: string;
   chrome?: string;
+  registry?: string;
 }
 export interface InstallOptions {
   home?: string;
@@ -28,7 +40,9 @@ export interface InstallOptions {
 }
 
 export function shellQuote(value: string) {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
+  return process.platform === "win32"
+    ? `'${value.replace(/'/g, "''")}'`
+    : `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 async function exists(path: string, mode = constants.F_OK) {
@@ -64,15 +78,45 @@ async function detectChrome(browser: string, override?: string) {
       : browser === "chrome-for-testing"
         ? "Google Chrome for Testing"
         : "Google Chrome";
-  const candidates = ["/Applications", join(homedir(), "Applications")].map((directory) =>
-    join(directory, `${application}.app`, "Contents", "MacOS", application),
-  );
+  const candidates =
+    process.platform === "darwin"
+      ? ["/Applications", join(homedir(), "Applications")].map((directory) =>
+          join(directory, `${application}.app`, "Contents", "MacOS", application),
+        )
+      : process.platform === "win32"
+        ? [process.env.LOCALAPPDATA, process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"]]
+            .filter((value): value is string => Boolean(value))
+            .map((directory) =>
+              join(
+                directory,
+                browser === "chromium" ? "Chromium" : "Google",
+                browser === "chromium"
+                  ? "Application"
+                  : browser === "chrome-for-testing"
+                    ? "Chrome for Testing/Application"
+                    : "Chrome/Application",
+                "chrome.exe",
+              ),
+            )
+        : (browser === "chrome-for-testing"
+            ? ["/usr/bin/google-chrome-for-testing", "/opt/google/chrome-for-testing/chrome"]
+            : [
+                "/usr/bin/google-chrome",
+                "/usr/bin/google-chrome-stable",
+                "/usr/bin/chromium",
+                "/usr/bin/chromium-browser",
+                "/snap/bin/chromium",
+              ]
+          ).filter((path) =>
+            browser === "chromium" ? path.includes("chromium") : path.includes("google-chrome"),
+          );
   for (const path of candidates) if (await exists(path, constants.X_OK)) return path;
   return undefined;
 }
 
 export async function install(options: InstallOptions): Promise<Installation> {
-  if (process.platform !== "darwin") throw new Error("Installation currently supports macOS only.");
+  if (!["darwin", "linux", "win32"].includes(process.platform))
+    throw new Error("Supported platforms are macOS, Linux, and Windows.");
   const paths = bridgePaths(options.home);
   const extensionId = options.extensionId ?? DEVELOPMENT_EXTENSION_ID;
   if (!/^[a-p]{32}$/.test(extensionId))
@@ -82,7 +126,9 @@ export async function install(options: InstallOptions): Promise<Installation> {
     throw new Error("--browser must be chrome, chrome-for-testing, or chromium.");
   const manifest = options.manifestDir
     ? join(resolve(options.manifestDir), `${NATIVE_HOST_NAME}.json`)
-    : nativeManifestPath(browser as "chrome" | "chrome-for-testing" | "chromium");
+    : process.platform === "win32"
+      ? join(paths.directory, `${NATIVE_HOST_NAME}.json`)
+      : nativeManifestPath(browser as "chrome" | "chrome-for-testing" | "chromium");
   const installation: Installation = {
     version: BRIDGE_PROTOCOL_VERSION,
     extensionId,
@@ -90,12 +136,14 @@ export async function install(options: InstallOptions): Promise<Installation> {
     cli: fileURLToPath(import.meta.url),
     manifest,
     chrome: await detectChrome(browser, options.chromePath),
+    registry: process.platform === "win32" ? registryKey(browser) : undefined,
   };
   await mkdir(paths.directory, { recursive: true, mode: 0o700 });
   const directory = await lstat(paths.directory);
   if (!directory.isDirectory() || directory.isSymbolicLink())
     throw new Error("Bridge home must be a real directory.");
-  await chmod(paths.directory, 0o700);
+  if (process.platform === "win32") await protectDirectory(paths.directory);
+  else await chmod(paths.directory, 0o700);
   const command = [
     installation.node,
     installation.cli,
@@ -107,7 +155,25 @@ export async function install(options: InstallOptions): Promise<Installation> {
   ]
     .map(shellQuote)
     .join(" ");
-  await atomicWrite(paths.launcher, `#!/bin/sh\nexec ${command} "$@"\n`, 0o700);
+  if (process.platform === "win32") {
+    const quote = (value: string) => `"${value.replace(/%/g, "%%")}"`;
+    const args = [
+      installation.node,
+      installation.cli,
+      "native-host",
+      "--home",
+      paths.directory,
+      "--extension-id",
+      extensionId,
+    ]
+      .map(quote)
+      .join(" ");
+    await atomicWrite(
+      paths.launcher,
+      `@echo off\r\nsetlocal DisableDelayedExpansion\r\n${args} %*\r\n`,
+      0o700,
+    );
+  } else await atomicWrite(paths.launcher, `#!/bin/sh\nexec ${command} "$@"\n`, 0o700);
   await atomicWrite(paths.config, `${JSON.stringify(installation, null, 2)}\n`, 0o600);
   await atomicWrite(
     manifest,
@@ -124,6 +190,7 @@ export async function install(options: InstallOptions): Promise<Installation> {
     )}\n`,
     0o600,
   );
+  if (installation.registry) await registerManifest(installation.registry, manifest);
   return installation;
 }
 
@@ -132,8 +199,10 @@ export async function readInstallation(home?: string): Promise<Installation> {
   if (
     value.version !== BRIDGE_PROTOCOL_VERSION ||
     !/^[a-p]{32}$/.test(value.extensionId) ||
+    (value.registry !== undefined &&
+      ![registryKey("chrome"), registryKey("chromium")].includes(value.registry)) ||
     ![value.node, value.cli, value.manifest].every(
-      (path) => typeof path === "string" && path.startsWith("/"),
+      (path) => typeof path === "string" && isAbsolute(path),
     )
   ) {
     throw new Error("Invalid installation configuration. Run agent-native install again.");
@@ -172,15 +241,18 @@ export function mcpConfiguration(home?: string, installation?: Installation) {
 }
 
 export function cliCommand(command: string, home?: string, installation?: Installation) {
-  return [
-    installation?.node ?? process.execPath,
-    installation?.cli ?? fileURLToPath(import.meta.url),
-    command,
-    "--home",
-    bridgePaths(home).directory,
-  ]
-    .map(shellQuote)
-    .join(" ");
+  return (
+    (process.platform === "win32" ? "& " : "") +
+    [
+      installation?.node ?? process.execPath,
+      installation?.cli ?? fileURLToPath(import.meta.url),
+      command,
+      "--home",
+      bridgePaths(home).directory,
+    ]
+      .map(shellQuote)
+      .join(" ")
+  );
 }
 
 export async function uninstall(home?: string) {
@@ -202,7 +274,19 @@ export async function uninstall(home?: string) {
     const manifest = JSON.parse(registered);
     if (manifest.name !== NATIVE_HOST_NAME || manifest.path !== paths.launcher)
       throw new Error("Native manifest belongs to another installation; refusing to remove it.");
+    if (installation.registry) {
+      const registeredPath = await registeredManifest(installation.registry);
+      if (registeredPath && registeredPath !== installation.manifest)
+        throw new Error("Registry entry belongs to another installation; refusing to remove it.");
+      if (registeredPath) await unregisterManifest(installation.registry);
+    }
     await unlink(installation.manifest);
+  }
+  if (!registered && installation.registry) {
+    const registeredPath = await registeredManifest(installation.registry);
+    if (registeredPath && registeredPath !== installation.manifest)
+      throw new Error("Registry entry belongs to another installation; refusing to remove it.");
+    if (registeredPath) await unregisterManifest(installation.registry);
   }
   const bridge = new BridgeClient(paths.socket, 100, 1_000);
   try {
@@ -278,18 +362,38 @@ export async function doctor(home?: string) {
         installation.chrome ??
         "Chrome was not found. Reinstall with --chrome-path pointing to its executable.",
     });
-    for (const [name, path, mode] of [
-      ["Bridge directory permissions", paths.directory, 0o700],
-      ["Socket permissions", paths.socket, 0o600],
-    ] as const) {
-      const info = await lstat(path).catch(() => undefined);
-      if (info)
-        checks.push({
-          name,
-          ok: !info.isSymbolicLink() && (info.mode & 0o777) === mode,
-          detail: path,
-        });
-    }
+    if (process.platform === "win32") {
+      checks.push({
+        name: "Bridge directory permissions",
+        ok: await directoryIsPrivate(paths.directory),
+        detail: paths.directory,
+      });
+      checks.push({
+        name: "Named pipe permissions",
+        ok: await pipeIsPrivate(paths.socket),
+        detail: paths.socket,
+      });
+      checks.push({
+        name: "Windows registration",
+        ok: Boolean(
+          installation.registry &&
+          (await registeredManifest(installation.registry)) === installation.manifest,
+        ),
+        detail: installation.registry ?? "Missing registry location. Reinstall.",
+      });
+    } else
+      for (const [name, path, mode] of [
+        ["Bridge directory permissions", paths.directory, 0o700],
+        ["Socket permissions", paths.socket, 0o600],
+      ] as const) {
+        const info = await lstat(path).catch(() => undefined);
+        if (info)
+          checks.push({
+            name,
+            ok: !info.isSymbolicLink() && (info.mode & 0o777) === mode,
+            detail: path,
+          });
+      }
     const lock = await readFile(paths.lock, "utf8").catch(() => undefined);
     if (lock) {
       try {

@@ -2,9 +2,9 @@
 
 Use Codex, Claude Code, OpenCode, or another MCP agent inside your existing authenticated Chrome session. Sign into websites normally; the extension exposes local browser tools to your terminal agent.
 
-Chrome remains your browser. Browser control runs locally through a Chrome extension, Native Messaging host, and Unix socket. There is no hosted control server or remote debugging port.
+Chrome remains your browser. Browser control runs locally through a Chrome extension, Native Messaging host, and local IPC. There is no hosted control server or remote debugging port.
 
-**Supported:** macOS, Chrome 118+, Node.js 22.12+ and pnpm 10. The CLI is installed from source; an npm registry release and Chrome Web Store listing are not available yet.
+**Platforms:** macOS, Linux, and Windows 10/11; Chrome 118+, Node.js 22.12+ and pnpm 10. The CLI is installed from source; an npm registry release and Chrome Web Store listing are not available yet.
 
 ## Quick start
 
@@ -34,6 +34,8 @@ From the repository root:
 ```sh
 node packages/cli/dist/index.js install
 ```
+
+On Windows, run these commands in PowerShell using a Windows Node.js installation, rather than WSL. The installer prints PowerShell commands on Windows.
 
 The installer registers the Native Messaging host and prints ready-to-run **Codex** and **Claude Code** commands, plus an **OpenCode** configuration block. Use the printed configuration for your agent; it contains the correct absolute paths for this installation.
 
@@ -91,13 +93,13 @@ pnpm exec playwright install chromium --no-shell
 pnpm test
 ```
 
-`pnpm check` runs formatting checks, TypeScript checks, and the production builds. `pnpm test` runs the extension, Native Messaging/MCP, and packaged CLI checks in temporary profiles and directories. Tests use local fixtures and make no model calls. They do not change your personal Chrome or agent configuration.
+`pnpm check` runs formatting checks, TypeScript checks, and the production builds. `pnpm test` runs the extension, Native Messaging/MCP, and packaged CLI checks in temporary profiles and directories. Tests use local fixtures and make no model calls. They do not change your agent configuration. Windows tests temporarily register a native host for their isolated browser and restore the previous registry value afterward. Close other Chrome profiles before running the terminal suite.
 
-The macOS CI workflow runs the same checks on Node.js 22 and 24. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and the optional Codex integration check.
+The macOS, Linux, and Windows CI workflow runs the same checks on Node.js 22 and 24. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and the optional Codex integration check.
 
 ## Scope
 
-Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, full-page screenshots, uploads/downloads, developer tools, and built-in AI chat are not implemented. Registration supports macOS, with one Chrome profile owning a bridge directory at a time.
+Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, full-page screenshots, uploads/downloads, developer tools, and built-in AI chat are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
 
 ## License
 

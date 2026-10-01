@@ -18,3 +18,8 @@ await build({
 });
 await chmod(`${root}packages/cli/dist/index.js`, 0o755);
 await copyFile(`${root}LICENSE`, `${root}packages/cli/LICENSE`);
+
+await copyFile(
+  `${root}packages/native-bridge/src/windows-pipe.cs`,
+  `${root}packages/cli/dist/windows-pipe.cs`,
+);
