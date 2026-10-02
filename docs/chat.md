@@ -4,7 +4,7 @@ The extension's **Chat** view can inspect and act in your existing Chrome sessio
 
 ## Configure a provider
 
-After building, reload the extension in `chrome://extensions`. Open its sidebar, select **Chat**, and open **Settings**.
+After building, reload the extension in `chrome://extensions`. The sidebar opens on Chat. Choose **Connect AI** for first use; existing connections can be changed in **Settings**.
 
 | Provider          | API                                     | Model selection                                                               |
 | ----------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
@@ -13,7 +13,9 @@ After building, reload the extension in `chrome://extensions`. Open its sidebar,
 | Anthropic         | `https://api.anthropic.com/v1` Messages | Account model list, with capabilities/context where available                 |
 | OpenAI-compatible | Your server's API base URL              | `/models` when supported, or a manually entered model ID                      |
 
-Enter a key, choose **Load models**, select or enter the model ID, and save. Chrome asks for access to that provider origin. Manually entered model IDs require explicit tool and vision settings; unknown capabilities are not assumed. Enabling a capability does not add it to a model: the selected model/server must support it.
+Choose a provider, enter a key, and select **Continue**. Chrome asks for access to that provider origin. Pick a model and select **Start chatting**. The conversation view then shows just chat, the current tab, and the message box.
+
+**Settings → Advanced connection settings** contains manual model IDs, browser-action and screenshot toggles, context limits, and saved-key removal. Discovery fills known capabilities. For models without metadata, browser actions are attempted by default and rejected by the provider if unsupported; unknown vision remains disabled. Enabling a capability does not add it to a model. **Settings → Instructions & chat memory** contains pinned instructions, token estimates, and persistent task state.
 
 For LM Studio, a typical base URL is `http://127.0.0.1:1234/v1`. Use the address and model ID your local server actually exposes. The compatible adapter requires streamed Chat Completions and standard function/tool calls for browser actions. HTTP endpoints are limited to loopback (`localhost`, `127.0.0.1`, or `[::1]`); remote endpoints require HTTPS. A local server may accept an empty API key.
 
@@ -49,6 +51,6 @@ External agents such as Codex manage their own context. This system applies only
 
 ## Data and troubleshooting
 
-Keys remain in local extension storage and can be removed with **Forget key**. Conversations and screenshots stay in local IndexedDB until cleared. Requests go directly to the selected provider. See [SECURITY.md](../SECURITY.md) for the data boundary.
+Keys remain in local extension storage and can be removed with **Remove saved API key**. Conversations and screenshots stay in local IndexedDB until cleared. Requests go directly to the selected provider. See [SECURITY.md](../SECURITY.md) for the data boundary.
 
-For authentication failures, check the saved key and account access. For connection failures, confirm the base URL, Chrome's granted origin access, and whether your local server is running. If `/models` is unsupported, enter the model ID directly. For tool/image errors, confirm both the model and server support the capability. Chrome internal pages remain restricted.
+For authentication failures, check the saved key and account access. For connection failures, confirm the base URL, Chrome's granted origin access, and whether your local server is running. If `/models` is unsupported, enter the model ID directly. For tool/image errors, open Advanced connection settings and confirm both the model and server support the capability. Chrome internal pages remain restricted.

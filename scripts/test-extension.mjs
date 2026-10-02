@@ -60,6 +60,7 @@ try {
   await panel.setViewportSize({ width: 420, height: 1050 });
   await panel.goto(`chrome-extension://${extensionId}/sidebar/index.html`);
   await panel.getByRole("heading", { name: "Agent Native", exact: true }).waitFor();
+  await panel.getByRole("button", { name: "Browser tools", exact: true }).click();
   passed("unpacked MV3 extension loads and renders React control panel");
 
   async function request(method, params = {}) {

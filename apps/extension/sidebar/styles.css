@@ -483,6 +483,27 @@ footer {
   width: 100%;
   margin-top: 10px;
 }
+.chat-advanced {
+  border-top: 1px solid #2a3037;
+  padding-top: 13px;
+  margin-top: 18px;
+  color: #83909e;
+  font-size: 10px;
+}
+.chat-advanced summary {
+  cursor: pointer;
+  line-height: 1.6;
+}
+.chat-advanced > label {
+  display: block;
+  margin: 14px 0 7px;
+}
+.chat-connect {
+  min-width: 145px;
+  padding: 11px 20px;
+  font-size: 12px;
+  margin-top: 4px;
+}
 .model-capabilities {
   display: flex;
   flex-direction: column;

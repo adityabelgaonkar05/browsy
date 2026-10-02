@@ -28,8 +28,8 @@ async function tool<K extends ToolName>(method: K, params: ToolParams[K]): Promi
 }
 
 function App() {
-  const [screen, setScreen] = useState<"chat" | "control">("control");
-  const [chatOpened, setChatOpened] = useState(false);
+  const [screen, setScreen] = useState<"chat" | "control">("chat");
+  const [chatOpened, setChatOpened] = useState(true);
   const [tabs, setTabs] = useState<BrowserTab[]>([]);
   const [tabId, setTabId] = useState<number | undefined>();
   const [busy, setBusy] = useState(false);

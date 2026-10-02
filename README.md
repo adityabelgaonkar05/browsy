@@ -74,11 +74,12 @@ Install the Chrome extension separately and keep Chrome open. Choose `codex`, `c
 
 ## Built-in AI chat
 
-Reload the extension after building, open the sidebar, and select **Chat**. In **Settings**:
+Reload the extension after building. The sidebar opens on **Chat**.
 
-1. Choose OpenRouter, OpenAI, Anthropic, or an OpenAI-compatible endpoint.
-2. Enter your API key (optional for a local server) and choose **Load models**, or enter a model ID.
-3. Confirm the model’s tool/vision capabilities and context window, then **Save provider**.
+1. Choose **Connect AI**, select a provider, and enter your key (optional for local servers).
+2. Choose **Continue**, pick a model, and select **Start chatting**.
+
+Provider details, model overrides, screenshot capabilities, context limits, and chat memory live in **Settings**. **Advanced connection settings** supports manually entered models and local endpoints. Capabilities are filled from discovery when available; unknown vision support remains disabled.
 
 Try “Summarize my active tab” or “Find the GitHub tab about authentication.” Replies stream as they arrive, with expandable browser tool results. **Stop** cancels further work; **New chat** clears history. Provider/model changes start a fresh conversation. The manual panel remains under **Browser tools**.
 

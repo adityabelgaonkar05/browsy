@@ -24,6 +24,7 @@ export function Chat() {
   const current = useRef(state);
   const [ready, setReady] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
   const [models, setModels] = useState<Model[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,6 +39,9 @@ export function Chat() {
   const bottom = useRef<HTMLDivElement>(null);
   const browserState = useRef("");
   const profile = settings.profiles[settings.selected];
+  const hasProvider = Boolean(
+    profile.model && (profile.kind === "compatible" || profile.apiKey.trim()),
+  );
   const browser = tab
     ? JSON.stringify({ activeTabId: tab.id, title: tab.title, url: tab.url })
     : "Active tab unavailable. Use browser_list_tabs.";
@@ -67,7 +71,7 @@ export function Chat() {
         setSettings(saved);
         setDraft(saved.profiles[saved.selected]);
         update(chat);
-        setShowSettings(!saved.profiles[saved.selected].model);
+        setModelReady(Boolean(saved.profiles[saved.selected].model));
         setReady(true);
       })
       .catch(() => {
@@ -119,33 +123,48 @@ export function Chat() {
     discovery.current?.abort();
     setDraft(settings.profiles[kind]);
     setModels([]);
+    setModelReady(Boolean(settings.profiles[kind].model));
     setError("");
+  }
+  function openSettings() {
+    setDraft(profile);
+    setModels([]);
+    setModelReady(Boolean(profile.model));
+    setError("");
+    setShowSettings(true);
   }
   function selectModel(id: string) {
     const model = models.find((item) => item.id === id);
     setDraft((value) => ({
       ...value,
       model: id,
-      tools: model?.tools ?? false,
+      tools: model?.tools ?? true,
       vision: model?.vision ?? false,
       context: model?.context ?? 128_000,
     }));
   }
   async function discover() {
     setError("");
+    const controller = new AbortController();
+    discovery.current?.abort();
+    discovery.current = controller;
+    setLoadingModels(true);
     try {
       const origin = validateSettings(draft, false);
-      // Call permissions.request directly from the user gesture, before fetch.
       if (!(await chrome.permissions.request({ origins: [origin] })))
         throw new Error("Provider access was not granted.");
-      const controller = new AbortController();
-      discovery.current = controller;
-      setLoadingModels(true);
+      controller.signal.throwIfAborted();
       const values = await new Provider(draft).listModels(controller.signal);
-      setModels(values);
-      if (!values.length) setError("No models were returned. You can enter a model ID directly.");
+      setModels(
+        values.sort(
+          (a, b) =>
+            Number(Boolean(b.tools)) - Number(Boolean(a.tools)) || a.name.localeCompare(b.name),
+        ),
+      );
+      setModelReady(true);
+      if (!values.length) setStatus("Enter the model ID supplied by your server.");
     } catch (error) {
-      if (!discovery.current?.signal.aborted)
+      if (!controller.signal.aborted)
         setError(error instanceof Error ? error.message : "Could not load models.");
     } finally {
       setLoadingModels(false);
@@ -153,11 +172,11 @@ export function Chat() {
   }
   async function storeProvider() {
     setError("");
+    setSaving(true);
     try {
       const origin = validateSettings(draft);
       if (!(await chrome.permissions.request({ origins: [origin] })))
         throw new Error("Provider access was not granted.");
-      setSaving(true);
       const value = {
         ...settings,
         selected: draft.kind,
@@ -222,6 +241,10 @@ export function Chat() {
   async function send(text = input) {
     if (running.current || !ready || !text.trim()) return;
     setError("");
+    if (!hasProvider) {
+      openSettings();
+      return;
+    }
     try {
       validateSettings(profile);
     } catch (error) {
@@ -340,36 +363,32 @@ export function Chat() {
     }
   }
 
-  return (
-    <section className="chat-panel" aria-label="AI chat">
-      <div className="chat-heading row">
-        <div>
-          <h2>Work with your browser</h2>
-          <p>
-            {profile.model
-              ? `${providerDefaults[profile.kind].name} · ${profile.model}`
-              : "Choose a provider and model to get started."}
-          </p>
-        </div>
-        <div className="chat-heading-actions">
+  if (showSettings)
+    return (
+      <section className="chat-panel" aria-label="Chat settings">
+        <div className="chat-heading row">
+          <div>
+            <h2>Settings</h2>
+            <p>
+              {hasProvider
+                ? "Your AI connection and preferences."
+                : "Connect once, then start chatting."}
+            </p>
+          </div>
           <button
             className="quiet"
-            disabled={busy || !ready}
+            disabled={saving}
             onClick={() => {
-              setDraft(profile);
-              setShowSettings(!showSettings);
+              discovery.current?.abort();
+              setShowSettings(false);
+              setError("");
             }}
           >
-            Settings
-          </button>
-          <button className="quiet" disabled={busy || !ready} onClick={() => void resetChat()}>
-            New chat
+            ← Back to chat
           </button>
         </div>
-      </div>
-      {showSettings && (
-        <section className="card chat-settings" aria-label="Chat settings">
-          <label htmlFor="chat-provider">Provider</label>
+        <section className="card chat-settings">
+          <label htmlFor="chat-provider">AI provider</label>
           <select
             id="chat-provider"
             value={draft.kind}
@@ -384,7 +403,7 @@ export function Chat() {
           </select>
           {draft.kind === "compatible" && (
             <>
-              <label htmlFor="chat-endpoint">API base URL</label>
+              <label htmlFor="chat-endpoint">Server address</label>
               <input
                 id="chat-endpoint"
                 type="url"
@@ -393,15 +412,13 @@ export function Chat() {
                 onChange={(event) => {
                   setDraft({ ...draft, endpoint: event.target.value });
                   setModels([]);
+                  setModelReady(false);
                 }}
                 placeholder="http://127.0.0.1:1234/v1"
               />
-              <p>Use your LM Studio, llama.cpp, vLLM, or other Chat Completions server.</p>
             </>
           )}
-          <label htmlFor="chat-key">
-            API key {draft.kind === "compatible" && "(optional for local servers)"}
-          </label>
+          <label htmlFor="chat-key">API key {draft.kind === "compatible" && "(optional)"}</label>
           <input
             id="chat-key"
             type="password"
@@ -410,187 +427,256 @@ export function Chat() {
             value={draft.apiKey}
             disabled={busy || loadingModels || saving}
             onChange={(event) => setDraft({ ...draft, apiKey: event.target.value })}
-            placeholder="Stored only in this extension"
+            placeholder="Paste your API key"
           />
-          <div className="row">
-            <p>Keys stay local and never sync to Chrome Sync.</p>
+          <p>Saved on this device. Never synced to Chrome.</p>
+          {!modelReady && !draft.model && (
+            <button
+              className="primary"
+              disabled={busy || saving || loadingModels}
+              onClick={() => void discover()}
+            >
+              {loadingModels ? "Connecting…" : "Continue →"}
+            </button>
+          )}
+          {(modelReady || draft.model) && (
+            <>
+              <div className="row">
+                <label htmlFor="chat-model-choice">Model</label>
+                <button
+                  className="quiet"
+                  disabled={busy || saving || loadingModels}
+                  onClick={() => void discover()}
+                >
+                  {loadingModels ? "Loading…" : "Refresh models"}
+                </button>
+              </div>
+              {models.length > 0 ? (
+                <select
+                  id="chat-model-choice"
+                  value={draft.model}
+                  disabled={busy || saving || loadingModels}
+                  onChange={(event) => selectModel(event.target.value)}
+                >
+                  <option value="">Choose a model…</option>
+                  {draft.model && !models.some((model) => model.id === draft.model) && (
+                    <option value={draft.model}>{draft.model}</option>
+                  )}
+                  {models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                      {model.tools === false ? " · text only" : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="chat-model-choice"
+                  value={draft.model}
+                  disabled={busy || saving || loadingModels}
+                  onChange={(event) =>
+                    setDraft({ ...draft, model: event.target.value, tools: true, vision: false })
+                  }
+                  placeholder="Model ID from your server"
+                  spellCheck={false}
+                />
+              )}
+            </>
+          )}
+          <details className="chat-advanced">
+            <summary>Advanced connection settings</summary>
+            <label htmlFor="chat-model">Model ID</label>
+            <input
+              id="chat-model"
+              value={draft.model}
+              disabled={busy || saving || loadingModels}
+              onChange={(event) =>
+                setDraft({ ...draft, model: event.target.value, tools: true, vision: false })
+              }
+              placeholder="Enter a model ID manually"
+              spellCheck={false}
+            />
+            <div className="model-capabilities">
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={draft.tools}
+                  disabled={busy || saving}
+                  onChange={(event) => setDraft({ ...draft, tools: event.target.checked })}
+                />
+                Allow browser actions
+              </label>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={draft.vision}
+                  disabled={busy || saving}
+                  onChange={(event) => setDraft({ ...draft, vision: event.target.checked })}
+                />
+                Use screenshots with a vision model
+              </label>
+            </div>
+            <label htmlFor="chat-context">Model context window (tokens)</label>
+            <input
+              id="chat-context"
+              type="number"
+              min={4096}
+              max={4000000}
+              value={draft.context}
+              disabled={busy || saving}
+              onChange={(event) => setDraft({ ...draft, context: Number(event.target.value) })}
+            />
+            <p>
+              Capabilities are filled from model discovery when available. Enable screenshots only
+              for a vision model; unsupported browser actions are rejected by the provider.
+            </p>
             <button
               className="quiet"
               disabled={busy || saving || loadingModels}
               onClick={() => void forgetKey()}
             >
-              Forget key
+              Remove saved API key
             </button>
-          </div>
-          <div className="row">
-            <label htmlFor="chat-model">Model</label>
-            <button
-              className="quiet"
-              disabled={busy || saving || loadingModels}
-              onClick={() => void discover()}
-            >
-              {loadingModels ? "Loading…" : "Load models ↻"}
-            </button>
-          </div>
-          {models.length > 0 && (
-            <select
-              aria-label="Available models"
-              value={models.some((item) => item.id === draft.model) ? draft.model : ""}
-              disabled={busy || saving || loadingModels}
-              onChange={(event) => selectModel(event.target.value)}
-            >
-              <option value="">Choose a model…</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                  {model.tools ? " · tools" : ""}
-                  {model.vision ? " · vision" : ""}
-                </option>
-              ))}
-            </select>
+          </details>
+          {error && (
+            <div className="chat-error" role="alert">
+              {error}
+            </div>
           )}
-          <input
-            id="chat-model"
-            value={draft.model}
-            disabled={busy || saving || loadingModels}
-            onChange={(event) => {
-              setDraft({ ...draft, model: event.target.value, tools: false, vision: false });
-            }}
-            placeholder="Model ID, or choose from the list"
-            spellCheck={false}
-          />
-          <div className="model-capabilities">
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={draft.tools}
-                disabled={busy || saving}
-                onChange={(event) => setDraft({ ...draft, tools: event.target.checked })}
-              />
-              Supports browser tool calls
-            </label>
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={draft.vision}
-                disabled={busy || saving}
-                onChange={(event) => setDraft({ ...draft, vision: event.target.checked })}
-              />
-              Supports images
-            </label>
-          </div>
-          <label htmlFor="chat-context">Model context window (tokens)</label>
-          <input
-            id="chat-context"
-            type="number"
-            min={4096}
-            max={4000000}
-            value={draft.context}
-            disabled={busy || saving}
-            onChange={(event) => setDraft({ ...draft, context: Number(event.target.value) })}
-          />
-          <p>
-            Discovered capabilities are filled when available. Confirm them for manually entered
-            models. Switching provider or model starts a new chat.
-          </p>
-          <button
-            className="primary"
-            disabled={busy || saving || loadingModels}
-            onClick={() => void storeProvider()}
-          >
-            {saving ? "Saving…" : "Save provider"}
-          </button>
+          {draft.model && (
+            <>
+              {hasProvider &&
+                (profile.kind !== draft.kind ||
+                  profile.model !== draft.model ||
+                  profile.endpoint !== draft.endpoint) && (
+                  <p>Changing your provider or model starts a new conversation.</p>
+                )}
+              <button
+                className="primary"
+                disabled={busy || saving || loadingModels}
+                onClick={() => void storeProvider()}
+              >
+                {saving ? "Saving…" : hasProvider ? "Save changes" : "Start chatting →"}
+              </button>
+            </>
+          )}
         </section>
-      )}
+        <details className="chat-memory">
+          <summary>
+            Instructions & chat memory{" "}
+            <span>
+              {Math.round(contextTokens(state, browser) / 1000)}K estimated · compact at{" "}
+              {Math.round(compactionThreshold(profile.context) / 1000)}K
+            </span>
+          </summary>
+          <label htmlFor="chat-pinned">Instructions to keep throughout this chat</label>
+          <textarea
+            id="chat-pinned"
+            rows={3}
+            maxLength={4000}
+            value={state.pinned}
+            disabled={busy || !ready}
+            onChange={(event) => update({ ...current.current, pinned: event.target.value })}
+            onBlur={() =>
+              void navigator.locks
+                .request("agent-native-chat-turn", { ifAvailable: true }, async (lock) => {
+                  if (!lock) throw new Error("Chat is running in another sidebar.");
+                  const latest = await loadChat();
+                  latest.pinned = current.current.pinned;
+                  await saveChat(latest);
+                  update(latest);
+                })
+                .catch(() =>
+                  setError("Could not save pinned instructions while another chat is running."),
+                )
+            }
+            placeholder="Your preferences and constraints…"
+          />
+          {state.task.goal && (
+            <p>
+              <strong>Goal:</strong> {state.task.goal}
+            </p>
+          )}
+          {[
+            ...state.task.facts,
+            ...state.task.decisions,
+            ...state.task.urls,
+            ...state.task.artifacts,
+          ].map((value, index) => (
+            <p key={index}>{value}</p>
+          ))}
+          {state.summary.map((value, index) => (
+            <p key={`summary-${index}`}>{value}</p>
+          ))}
+          <p>
+            128K logical context. Recent turns remain verbatim; older history is compacted into task
+            state and chronological notes.{" "}
+            {state.compactions > 0 && `${state.compactions} compaction(s).`}
+          </p>
+          {state.usage && (
+            <p>
+              Last provider usage: {state.usage.input.toLocaleString()} input /{" "}
+              {state.usage.output.toLocaleString()} output tokens. Total response tokens:{" "}
+              {state.totalOutput.toLocaleString()}.
+            </p>
+          )}
+        </details>
+      </section>
+    );
+
+  return (
+    <section className="chat-panel" aria-label="AI chat">
+      <div className="chat-heading row">
+        <div>
+          <h2>Chat</h2>
+          {hasProvider && <p>{providerDefaults[profile.kind].name}</p>}
+        </div>
+        <div className="chat-heading-actions">
+          {(hasProvider || state.messages.length > 0) && (
+            <button className="quiet" disabled={busy || !ready} onClick={openSettings}>
+              Settings
+            </button>
+          )}
+          {state.messages.length > 0 && (
+            <button className="quiet" disabled={busy || !ready} onClick={() => void resetChat()}>
+              New chat
+            </button>
+          )}
+        </div>
+      </div>
       <div className="chat-current-tab" title={tab?.url}>
         <span>Current tab</span>
         <strong>{tab?.title ?? "No active tab"}</strong>
       </div>
-      <details className="chat-memory">
-        <summary>
-          Pinned instructions & task state{" "}
-          <span>
-            {Math.round(contextTokens(state, browser) / 1000)}K estimated · compact at{" "}
-            {Math.round(compactionThreshold(profile.context) / 1000)}K
-          </span>
-        </summary>
-        <label htmlFor="chat-pinned">Instructions to keep throughout this chat</label>
-        <textarea
-          id="chat-pinned"
-          rows={3}
-          maxLength={4000}
-          value={state.pinned}
-          disabled={busy || !ready}
-          onChange={(event) => update({ ...current.current, pinned: event.target.value })}
-          onBlur={() =>
-            void navigator.locks
-              .request("agent-native-chat-turn", { ifAvailable: true }, async (lock) => {
-                if (!lock) throw new Error("Chat is running in another sidebar.");
-                const latest = await loadChat();
-                latest.pinned = current.current.pinned;
-                await saveChat(latest);
-                update(latest);
-              })
-              .catch(() =>
-                setError("Could not save pinned instructions while another chat is running."),
-              )
-          }
-          placeholder="Your preferences and constraints…"
-        />
-        {state.task.goal && (
-          <p>
-            <strong>Goal:</strong> {state.task.goal}
-          </p>
-        )}
-        {[
-          ...state.task.facts,
-          ...state.task.decisions,
-          ...state.task.urls,
-          ...state.task.artifacts,
-        ].map((value, index) => (
-          <p key={index}>{value}</p>
-        ))}
-        {state.summary.map((value, index) => (
-          <p key={`summary-${index}`}>{value}</p>
-        ))}
-        <p>
-          128K logical context. Recent turns remain verbatim; older history is compacted into task
-          state and chronological notes.{" "}
-          {state.compactions > 0 && `${state.compactions} compaction(s).`}
-        </p>
-        {state.usage && (
-          <p>
-            Last provider usage: {state.usage.input.toLocaleString()} input /{" "}
-            {state.usage.output.toLocaleString()} output tokens. Total response tokens:{" "}
-            {state.totalOutput.toLocaleString()}.
-          </p>
-        )}
-      </details>
       <div className="chat-messages" aria-label="Conversation" aria-live="off">
         {!state.messages.length && (
           <div className="chat-empty">
             <span className="chat-spark">✦</span>
-            <h2>A helping hand, in your tabs.</h2>
-            <p>Ask about a page or give me a browser task. I’ll inspect it before acting.</p>
-            <div className="chat-starters">
-              {[
-                "Summarize my active tab",
-                "Find the GitHub tab about authentication",
-                "Take a screenshot and explain this page",
-              ].map((prompt) => (
-                <button
-                  key={prompt}
-                  disabled={busy || !ready || !profile.model}
-                  onClick={() => void send(prompt)}
-                >
-                  {prompt} ↗
-                </button>
-              ))}
-            </div>
+            <h2>What can I help with?</h2>
+            <p>
+              {hasProvider
+                ? "Ask about this page, or give me a browser task."
+                : "Connect your AI, then ask about any page."}
+            </p>
+            {hasProvider ? (
+              <div className="chat-starters">
+                {["Summarize my active tab", "Find a tab for me"].map((prompt) => (
+                  <button key={prompt} disabled={busy || !ready} onClick={() => void send(prompt)}>
+                    {prompt} ↗
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button className="primary chat-connect" disabled={!ready} onClick={openSettings}>
+                Connect AI →
+              </button>
+            )}
           </div>
         )}
         {state.compactions > 0 && (
-          <p className="compaction-note">Earlier conversation is preserved in task state above.</p>
+          <p className="compaction-note">
+            Earlier conversation is saved in Settings → Chat memory.
+          </p>
         )}
         {state.messages.map((message) =>
           message.role === "tool" ? (
@@ -677,13 +763,7 @@ export function Chat() {
           }}
         />
         <div className="row">
-          <span role="status">
-            {busy
-              ? status
-              : profile.tools
-                ? "Browser tools enabled"
-                : "Text chat · browser tools disabled"}
-          </span>
+          <span role="status">{busy ? status : "Enter to send · Shift+Enter for a new line"}</span>
           {busy ? (
             <button
               type="button"
@@ -695,19 +775,16 @@ export function Chat() {
               Stop
             </button>
           ) : (
-            <button
-              className="primary"
-              disabled={!ready || !input.trim() || !profile.model}
-              type="submit"
-            >
-              Send ↑
+            <button className="primary" disabled={!ready || !input.trim()} type="submit">
+              {hasProvider ? "Send ↑" : "Connect AI"}
             </button>
           )}
         </div>
       </form>
       <p className="chat-disclosure">
-        Chat and requested page content go to your selected provider. Browser actions run locally in
-        your signed-in Chrome session.
+        {hasProvider
+          ? `Chat and requested page content go to ${providerDefaults[profile.kind].name}.`
+          : "Your browser session stays in Chrome. You choose the AI provider."}
       </p>
     </section>
   );

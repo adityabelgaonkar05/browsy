@@ -17,7 +17,7 @@ The extension contains no embedded provider credentials or analytics. User-suppl
 
 Built-in chat sends conversation text and requested browser results directly to the chosen provider. Screenshots are requested only as tools and sent as multimodal input only when vision is enabled. Provider access is granted for the selected origin through Chrome's optional host permission prompt. Markdown does not render raw HTML or automatically load remote images.
 
-Chat history, screenshots, pinned instructions, and compacted task state are stored locally in extension-origin IndexedDB. **New chat** removes the current stored conversation; pinned instructions remain until edited. **Forget key** removes a provider's saved API key. Removing the extension removes its local storage. Storage is not an encrypted credential vault; the project trusts software running as the current OS user.
+Chat history, screenshots, pinned instructions, and compacted task state are stored locally in extension-origin IndexedDB. **New chat** removes the current stored conversation; pinned instructions remain until edited. **Remove saved API key** removes a provider's saved API key. Removing the extension removes its local storage. Storage is not an encrypted credential vault; the project trusts software running as the current OS user.
 
 Normal test fixtures and browser control run locally. External MCP tool results are passed to the terminal agent, which may send them to its model provider according to that agent's configuration.
 
