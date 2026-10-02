@@ -111,7 +111,7 @@ export class BridgeClient {
     } while (Date.now() < deadline);
     throw new BrowserError(
       "BRIDGE_UNAVAILABLE",
-      "Browser bridge is unavailable. Open Chrome, load/reload Agent Native Browser, and run agent-native doctor.",
+      "Browser bridge is unavailable. Open Chrome, load/reload Browsy, and run browsy doctor.",
     );
   }
 

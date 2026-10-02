@@ -6,7 +6,7 @@ Review date: 2026-10-02.
 
 Suitable for a public **early preview** source release under MIT. No unresolved critical or high severity issue was identified in this review. This is a source review and local verification, not an independent penetration test or a guarantee that vulnerabilities are absent.
 
-The source release supports building and loading an unpacked extension. An npm registry release and Chrome Web Store distribution remain unavailable. The project intentionally trusts software running as the current OS user to control their authenticated browser session.
+The source release supports building and loading an unpacked extension. The npm companion was subsequently published as `@adityabelgaonkar/browsy@0.1.0`. Chrome Web Store distribution is deferred; the extension is distributed unpacked. The project intentionally trusts software running as the current OS user to control their authenticated browser session.
 
 ## Scope
 

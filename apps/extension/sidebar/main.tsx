@@ -145,10 +145,10 @@ function App() {
       <header>
         <div className="brand">
           <span className="mark">
-            a<span>↗</span>
+            b<span>↗</span>
           </span>
           <div>
-            <h1>Agent Native</h1>
+            <h1>Browsy</h1>
             <p>Your browser. Within reach.</p>
           </div>
         </div>

@@ -64,8 +64,8 @@ try {
       prefix,
       ...(process.platform === "win32" ? [] : ["lib"]),
       "node_modules",
-      "@agent-native",
-      "cli",
+      "@adityabelgaonkar",
+      "browsy",
       "dist",
       "index.js",
     ),
@@ -76,7 +76,7 @@ try {
     "Published bundle must not contain this checkout's absolute path",
   );
   const help = (await exec(process.execPath, [cli, "--help"])).stdout;
-  assert.match(help, /agent-native uninstall/);
+  assert.match(help, /browsy uninstall/);
   const config = JSON.parse(
     (await exec(process.execPath, [cli, "config", "--home", home, "--json"])).stdout,
   );

@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { copyFileSync } from "node:fs";
+import { copyFileSync, cpSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { thirdPartyNotices } from "../../scripts/third-party-notices.mjs";
@@ -21,6 +21,7 @@ export default defineConfig({
       closeBundle() {
         copyFileSync(resolve(root, "manifest.json"), resolve(root, "dist/manifest.json"));
         copyFileSync(resolve(root, "../../LICENSE"), resolve(root, "dist/LICENSE"));
+        cpSync(resolve(root, "icons"), resolve(root, "dist/icons"), { recursive: true });
       },
     },
   ],

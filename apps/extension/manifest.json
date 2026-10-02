@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Agent Native Browser",
+  "name": "Browsy",
   "version": "0.1.0",
   "description": "Local browser tools for terminal agents and your existing Chrome session.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAinhp2tLhFXapuY6ymZEbD5jke3IddkpZdsWAsTrZDZXc3E9cei/eQW4sC+mo5iCsQ936lQVT4I8Q6XJFlGkvqZ8SDRlfAE2o4xVDN66R+OUzU02asEfEtDvB7+Db+RQuRyPxeJl4DLA6lfGIi9al3WUr1lVz5s8ypAHZfuhTlr/Z8Lfara1bePTVZvDoXA2KYx295D4FE9dNvNY7fVT9MiTuZRDCwvS+L7jprkYnTROrpTUFtsiHmp5QyYvVCyk3mZ6AvII6AwivgYzhmGU5oG2ipMf/lb0yi2OK19I1OJkEK4qSf5JolXneUz4P1vVVZ9mfWwrNrQUw/b6QYlt50wIDAQAB",
@@ -11,7 +11,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open browser control panel"
+    "default_title": "Open Browsy"
   },
   "side_panel": {
     "default_path": "sidebar/index.html"
@@ -19,5 +19,11 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
-  "optional_host_permissions": ["https://*/*", "http://*/*"]
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 }

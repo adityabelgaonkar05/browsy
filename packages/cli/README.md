@@ -1,8 +1,15 @@
-# Agent Native Browser CLI
+# Browsy CLI
 
 Connect MCP terminal agents to your existing authenticated Chrome session through a local Native Messaging host. macOS, Linux, Windows 10/11, Node.js 22.12+, MIT licensed.
 
-The package is built and installed from the [source repository](https://github.com/adityabelgaonkar05/ai-native-browser). It is not yet published to the npm registry.
+Install Browsy in Chrome, then install the companion and connect your agent:
+
+```sh
+npm install -g @adityabelgaonkar/browsy
+browsy setup --agent codex
+```
+
+Chrome stays open and signed into your websites. Built-in sidebar chat works without this CLI. The [source repository](https://github.com/adityabelgaonkar05/browsy) also documents unpacked extension installation.
 
 From the repository root:
 
@@ -14,16 +21,16 @@ node packages/cli/dist/index.js setup --agent codex
 
 On Windows use PowerShell and Windows Node.js, not WSL.
 
-Load `apps/extension/dist` unpacked in Chrome. Setup registers the bridge and adds its MCP server to the chosen agent. Use `--agent claude` or `--agent opencode` instead; start a new agent session afterward. The extension reconnects automatically. See the repository [quick start](https://github.com/adityabelgaonkar05/ai-native-browser#quick-start).
+Load `apps/extension/dist` unpacked in Chrome. Setup registers the bridge and adds its MCP server to the chosen agent. Use `--agent claude` or `--agent opencode` instead; start a new agent session afterward. The extension reconnects automatically. See the repository [quick start](https://github.com/adityabelgaonkar05/browsy#quick-start).
 
 After building:
 
 ```sh
 npm install -g ./packages/cli
-agent-native setup --agent codex
+browsy setup --agent codex
 ```
 
-For another MCP client, `agent-native setup` prints configuration to add manually.
+For another MCP client, `browsy setup` prints configuration to add manually.
 
 | Command     | Purpose                                                                           |
 | ----------- | --------------------------------------------------------------------------------- |

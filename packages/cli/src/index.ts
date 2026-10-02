@@ -12,15 +12,15 @@ import {
   uninstall,
 } from "./installation";
 
-const HELP = `Agent Native Browser — local Chrome tools for terminal agents
+const HELP = `Browsy — local Chrome tools for terminal agents
 
 Commands:
-  agent-native setup --agent codex|claude|opencode [--home DIRECTORY]
-  agent-native install [--extension-id ID] [--home DIRECTORY]
-  agent-native doctor [--home DIRECTORY] [--json]
-  agent-native config [--home DIRECTORY] [--json]
-  agent-native mcp [--home DIRECTORY]
-  agent-native uninstall [--home DIRECTORY] [--json]
+  browsy setup --agent codex|claude|opencode [--home DIRECTORY]
+  browsy install [--extension-id ID] [--home DIRECTORY]
+  browsy doctor [--home DIRECTORY] [--json]
+  browsy config [--home DIRECTORY] [--json]
+  browsy mcp [--home DIRECTORY]
+  browsy uninstall [--home DIRECTORY] [--json]
 
 install registers the Native Messaging host on macOS, Linux, or Windows and prints agent configuration.
 setup --agent also adds the MCP server to your selected agent. Start a new agent session afterward.
@@ -140,14 +140,12 @@ async function main() {
       break;
     }
     default:
-      throw new Error(`Unknown command: ${command}. Run agent-native --help.`);
+      throw new Error(`Unknown command: ${command}. Run browsy --help.`);
   }
 }
 
 void main().catch((error: unknown) => {
   // stdout is reserved exclusively for Native Messaging/MCP protocol frames.
-  process.stderr.write(
-    `agent-native: ${error instanceof Error ? error.message : "Command failed."}\n`,
-  );
+  process.stderr.write(`browsy: ${error instanceof Error ? error.message : "Command failed."}\n`);
   process.exitCode = 1;
 });

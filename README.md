@@ -1,78 +1,69 @@
-# Agent Native Browser
+# Browsy
 
 Use Codex, Claude Code, OpenCode, or another MCP agent inside your existing authenticated Chrome session. Sign into websites normally; the extension exposes local browser tools to your terminal agent.
 
 Chrome remains your browser. Browser control runs locally through a Chrome extension, Native Messaging host, and local IPC. There is no hosted control server or remote debugging port.
 
-**Platforms:** macOS, Linux, and Windows 10/11; Chrome 118+, Node.js 22.12+ and pnpm 10. The CLI is installed from source; an npm registry release and Chrome Web Store listing are not available yet.
+**Platforms:** macOS, Linux, and Windows 10/11; Chrome 118+, Node.js 22.12+ and pnpm 10. The extension is loaded unpacked from this repository; a Chrome Web Store listing is not available.
 
 **Status:** early preview. Browser control and terminal integration have automated local fixture coverage. Provider adapters have synthetic streaming checks; live provider compatibility and Windows runtime behavior still need verification. See the [release audit](docs/release-audit.md) for evidence and limits.
 
-## Quick start
+## Installation
 
-### 1. Build
+You need Chrome 118+ and Node.js 22.12+. Browsy is distributed as an unpacked extension, so Chrome **Developer mode** is required. On Windows, use PowerShell and Windows Node.js rather than WSL.
+
+### 1. Install the npm companion
 
 ```sh
-git clone https://github.com/adityabelgaonkar05/ai-native-browser.git
-cd ai-native-browser
+npm install -g @adityabelgaonkar/browsy
+```
+
+### 2. Build and load the Chrome extension
+
+Get this repository and build the extension:
+
+```sh
+git clone https://github.com/adityabelgaonkar05/browsy.git
+cd browsy
 npx --yes pnpm@10.30.3 install --frozen-lockfile
-npx --yes pnpm@10.30.3 build
+npx --yes pnpm@10.30.3 --filter @agent-native/extension build
 ```
 
 If pnpm is already installed, use `pnpm` instead of `npx --yes pnpm@10.30.3`.
 
-### 2. Load the extension
-
 1. Open `chrome://extensions` and enable **Developer mode**.
-2. Choose **Load unpacked** and select this repository's `apps/extension/dist` directory.
-3. Pin **Agent Native Browser** and click its toolbar icon to open the control panel.
+2. Choose **Load unpacked** and select `apps/extension/dist` inside your checkout.
+3. Pin **Browsy** and click its toolbar icon to open the sidebar.
 
-The extension can inspect normal HTTP/HTTPS website tabs. Chrome internal pages such as `chrome://extensions` are listed but cannot be inspected.
+Keep the checkout on your computer; Chrome loads the extension from that folder. After updating or rebuilding it, click **Reload** in `chrome://extensions`.
 
-### 3. Connect your agent
+### 3. Connect your terminal agent
 
-From the repository root:
-
-```sh
-node packages/cli/dist/index.js setup --agent codex
-```
-
-Use `--agent claude` or `--agent opencode` for those agents. This command registers the bridge and adds its MCP server to the selected agent. No separate MCP command or configuration editing is needed.
-
-On Windows, run these commands in PowerShell using a Windows Node.js installation, rather than WSL. The installer prints PowerShell commands on Windows.
-
-For another MCP client, run `node packages/cli/dist/index.js setup` without `--agent`. It prints commands for Codex/Claude Code and configuration for OpenCode and other clients.
-
-The extension reconnects automatically while Chrome is open. **Terminal agents** should show **Connected**. If you need connection diagnostics:
+Choose the agent you already have installed:
 
 ```sh
-node packages/cli/dist/index.js doctor
+browsy setup --agent codex
 ```
 
-### 4. Use your agent
+Use `--agent claude` or `--agent opencode` instead for those agents. Setup registers the local bridge and adds its MCP server to the selected agent. For another MCP client, `browsy setup` prints configuration to add manually.
 
-Start a new agent session after setup. Keep Chrome open and select a normal website tab.
+Keep Chrome open, then start a **new agent session**. To check the connection:
 
-Try:
+```sh
+browsy doctor
+```
 
-> Inspect my active Chrome tab. Take a snapshot, then a screenshot, and describe what I am seeing.
+Ask your agent:
+
+> Inspect my active Chrome tab and describe what I am seeing.
 
 Or:
 
 > Find the open GitHub tab containing an issue about authentication and summarize it.
 
-Browser tools use your existing website sessions. The agent controls its own model, API credentials, and conversation context. The extension also includes its own AI chat sidebar with the same browser tools.
+Select a normal HTTP/HTTPS website tab. Chrome internal pages such as `chrome://extensions` are listed but cannot be inspected. If the agent cannot find its browser tools, check the connection and restart its session.
 
-## npm CLI flow
-
-After building, the packaged CLI gives the two-command setup flow:
-
-```sh
-npm install -g ./packages/cli
-agent-native setup --agent codex
-```
-
-Install the Chrome extension separately and keep Chrome open. Choose `codex`, `claude`, or `opencode`; setup adds the browser tools for that agent. When the npm package is published, the registry package name replaces `./packages/cli`. Its final product name is still undecided. Setup runs explicitly and does not depend on npm lifecycle scripts.
+Browser tools use your existing website sessions. Terminal agents manage their own model, credentials and context. If you only want the built-in sidebar chat, you can skip the npm companion and terminal-agent setup.
 
 ## Built-in AI chat
 
@@ -109,21 +100,41 @@ See the [tool reference](docs/browser-tools.md) for parameters, limits, and erro
 - [Connection and browser-tool troubleshooting](docs/troubleshooting.md)
 - [Architecture and transport details](docs/architecture.md)
 - [Security and data handling](SECURITY.md)
+- [Privacy policy](PRIVACY.md)
 
 Chrome shows its debugger banner while a tab is controlled. **Release tab** removes that connection. Opening DevTools or canceling the banner can detach the debugger; take a new snapshot before continuing.
 
-## Development
+## Development and source configuration
+
+For contributors or anyone running the CLI from source, use Node.js 22.12+ and pnpm 10.30.3. From a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm build
+node packages/cli/dist/index.js setup --agent codex
+```
+
+This builds both the extension and CLI. Load `apps/extension/dist` unpacked as described above. Source setup records the checkout's CLI path; keep the checkout in place and rerun setup after moving it. Use `--agent claude` or `--agent opencode` for those agents. For source diagnostics, run `node packages/cli/dist/index.js doctor`.
+
+```sh
+pnpm dev
+```
+
+This watches and rebuilds the extension. Reload it in Chrome after changes. Rebuild the CLI with `pnpm build` when changing bridge or MCP code.
+
+To package an unpacked extension ZIP and standalone npm archive after building, run `pnpm release:pack`. Outputs go to ignored `artifacts/release/`; this command does not publish them.
+
+### Checks
+
+```sh
 pnpm check
 pnpm exec playwright install chromium --no-shell
 pnpm test
 ```
 
-`pnpm check` runs formatting checks, TypeScript checks, and the production builds. `pnpm test` runs chat safety, extension, Native Messaging/MCP, and packaged CLI checks in temporary profiles and directories. Tests use local fixtures and make no model calls. They do not change your agent configuration. Windows tests temporarily register a native host for their isolated browser and restore the previous registry value afterward. Close other Chrome profiles before running the terminal suite.
+`pnpm check` runs formatting, TypeScript and production builds. `pnpm test` runs chat safety, extension, Native Messaging/MCP and packaged CLI checks in temporary profiles and directories. Fixtures are local and make no model calls. Tests do not change your agent configuration. Windows terminal tests temporarily register a host for their isolated browser and restore the previous registry value afterward; close other Chrome profiles first.
 
-The macOS, Linux, and Windows CI workflow runs the same checks on Node.js 22 and 24. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and the optional Codex integration check.
+CI defines macOS, Linux and Windows jobs with Node.js 22 and 24. See [CONTRIBUTING.md](CONTRIBUTING.md) for details and the optional Codex integration check.
 
 ## Scope
 

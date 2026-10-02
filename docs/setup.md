@@ -9,12 +9,12 @@ Built-in chat is configured separately in the sidebar’s **Chat → Settings** 
 For automatic registration:
 
 ```sh
-agent-native setup --agent codex
-# Or: agent-native setup --agent claude
-# Or: agent-native setup --agent opencode
+browsy setup --agent codex
+# Or: browsy setup --agent claude
+# Or: browsy setup --agent opencode
 ```
 
-From a source checkout, use `node packages/cli/dist/index.js` in place of `agent-native`. Setup registers the bridge and configures the selected agent. Keep Chrome open and start a new agent session. You can also pass `--agent` to `install`.
+From a source checkout, use `node packages/cli/dist/index.js` in place of `browsy`. Setup registers the bridge and configures the selected agent. Keep Chrome open and start a new agent session. You can also pass `--agent` to `install`.
 
 Codex registration uses the installed `codex mcp add` command and requires Codex on PATH. Claude Code setup adds a user-scoped entry to `~/.claude.json` (or `$CLAUDE_CONFIG_DIR/.claude.json`). OpenCode setup edits `$OPENCODE_CONFIG` when set, otherwise an existing `opencode.jsonc` or `opencode.json` under `$XDG_CONFIG_HOME/opencode` (default `~/.config/opencode`). Use `--agent-config FILE` for a specific Claude Code/OpenCode file. Only the `agent_native_browser` entry is updated. Existing settings and comments are preserved, changed files receive a private `.bak` copy, and malformed files are refused.
 
@@ -87,8 +87,8 @@ After building:
 
 ```sh
 npm install -g ./packages/cli
-agent-native setup --agent codex
-agent-native doctor
+browsy setup --agent codex
+browsy doctor
 ```
 
 The built package includes its runtime dependencies. The global command can be used in place of `node packages/cli/dist/index.js` for all commands.
@@ -99,7 +99,7 @@ The model learns browser access from the MCP tools and server instructions loade
 
 For Codex, run `codex mcp get agent_native_browser` to check registration, then open `/mcp` inside the affected session to check whether the server connected and its browser tools loaded. A configured server can still fail to start. Restart Codex after installing, rebuilding, or changing MCP configuration.
 
-Run `node packages/cli/dist/index.js doctor` (or `agent-native doctor`) to check the Chrome connection. Keep Chrome open and reload the extension if it is disconnected. If MCP startup reports `Cannot find module './impl/format'`, rebuild the CLI with the current bundler configuration and reinstall any global copy.
+Run `node packages/cli/dist/index.js doctor` (or `browsy doctor`) to check the Chrome connection. Keep Chrome open and reload the extension if it is disconnected. If MCP startup reports `Cannot find module './impl/format'`, rebuild the CLI with the current bundler configuration and reinstall any global copy.
 
 Once the server is connected, ask: “Use agent_native_browser to list my Chrome tabs and inspect the active tab.” If an explicit request works but a natural request does not, tool selection is the remaining issue; registration alone does not guarantee that every model chooses the right tool.
 
@@ -111,4 +111,4 @@ node packages/cli/dist/index.js uninstall
 
 This removes the recorded native registration, launcher, and configuration, and stops a connected matching host. It preserves unrelated files and leaves the bridge directory itself in place.
 
-Remove the Chrome extension in `chrome://extensions`. Remove `agent_native_browser` from your agent configuration: `codex mcp remove agent_native_browser`, `claude mcp remove agent_native_browser`, or delete the matching OpenCode entry. If you installed the global CLI, remove it with `npm uninstall -g @agent-native/cli`.
+Remove the Chrome extension in `chrome://extensions`. Remove `agent_native_browser` from your agent configuration: `codex mcp remove agent_native_browser`, `claude mcp remove agent_native_browser`, or delete the matching OpenCode entry. If you installed the global CLI, remove it with `npm uninstall -g @adityabelgaonkar/browsy`.

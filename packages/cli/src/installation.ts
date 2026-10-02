@@ -180,7 +180,7 @@ export async function install(options: InstallOptions): Promise<Installation> {
     `${JSON.stringify(
       {
         name: NATIVE_HOST_NAME,
-        description: "Agent Native Browser local bridge",
+        description: "Browsy local bridge",
         path: paths.launcher,
         type: "stdio",
         allowed_origins: [`chrome-extension://${extensionId}/`],
@@ -205,7 +205,7 @@ export async function readInstallation(home?: string): Promise<Installation> {
       (path) => typeof path === "string" && isAbsolute(path),
     )
   ) {
-    throw new Error("Invalid installation configuration. Run agent-native install again.");
+    throw new Error("Invalid installation configuration. Run browsy install again.");
   }
   return value;
 }
@@ -324,7 +324,7 @@ export async function doctor(home?: string) {
     checks.push({
       name: "Installation",
       ok: false,
-      detail: "Run agent-native install to register the native host.",
+      detail: "Run browsy install to register the native host.",
     });
   }
   if (installation) {

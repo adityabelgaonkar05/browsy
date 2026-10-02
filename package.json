@@ -1,11 +1,11 @@
 {
-  "name": "agent-native-browser",
+  "name": "browsy",
   "private": true,
   "version": "0.1.0",
   "license": "MIT",
   "packageManager": "pnpm@10.30.3",
   "scripts": {
-    "build": "pnpm --filter @agent-native/extension build && pnpm --filter @agent-native/cli build",
+    "build": "pnpm --filter @agent-native/extension build && pnpm --filter @adityabelgaonkar/browsy build",
     "dev": "pnpm --filter @agent-native/extension dev",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
@@ -15,7 +15,8 @@
     "test:chat": "node scripts/test-chat.mjs",
     "test:extension": "node scripts/test-extension.mjs",
     "test:terminal": "node scripts/test-terminal.mjs",
-    "test:package": "node scripts/test-package.mjs"
+    "test:package": "node scripts/test-package.mjs",
+    "release:pack": "node scripts/pack-release.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

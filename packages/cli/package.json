@@ -1,10 +1,11 @@
 {
-  "name": "@agent-native/cli",
+  "name": "@adityabelgaonkar/browsy",
   "version": "0.1.0",
   "license": "MIT",
   "description": "Connect terminal MCP agents to your existing Chrome session locally.",
   "type": "module",
   "bin": {
+    "browsy": "./dist/index.js",
     "agent-native": "./dist/index.js"
   },
   "files": [
@@ -17,12 +18,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/adityabelgaonkar05/ai-native-browser.git",
+    "url": "git+https://github.com/adityabelgaonkar05/browsy.git",
     "directory": "packages/cli"
   },
-  "homepage": "https://github.com/adityabelgaonkar05/ai-native-browser#readme",
+  "homepage": "https://github.com/adityabelgaonkar05/browsy#readme",
   "bugs": {
-    "url": "https://github.com/adityabelgaonkar05/ai-native-browser/issues"
+    "url": "https://github.com/adityabelgaonkar05/browsy/issues"
   },
   "keywords": [
     "chrome",

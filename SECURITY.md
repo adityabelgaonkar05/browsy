@@ -1,6 +1,6 @@
 # Security and data handling
 
-Agent Native Browser trusts software running as the current OS user to control the browser. Browser actions intentionally use the user's existing authenticated website sessions. An agent can interact with pages, submit forms, navigate, and close tabs through the tools it is given.
+Browsy trusts software running as the current OS user to control the browser. Browser actions intentionally use the user's existing authenticated website sessions. An agent can interact with pages, submit forms, navigate, and close tabs through the tools it is given.
 
 ## Local control boundary
 
