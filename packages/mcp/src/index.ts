@@ -8,7 +8,7 @@ import { browserTools } from "./tools";
 export async function startMcp(home?: string) {
   const bridge = new BridgeClient(bridgePaths(home).socket);
   const server = new McpServer(
-    { name: "agent-native-browser", version: "0.1.1" },
+    { name: "agent-native-browser", version: "0.1.2" },
     {
       instructions:
         "Inspect and control the user's existing authenticated Chrome session locally. When asked to see what the user sees in Chrome, inspect their browser, or find an open tab, use these tools. Start with browser_list_tabs, then browser_snapshot for the active or requested tab. Use browser_screenshot for visual details. Report connection or restricted-page errors accurately. Refs expire on a new snapshot, navigation, or element changes. After a timeout or disconnect, inspect before repeating an action.",

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Browsy",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local browser tools for terminal agents and your existing Chrome session.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAinhp2tLhFXapuY6ymZEbD5jke3IddkpZdsWAsTrZDZXc3E9cei/eQW4sC+mo5iCsQ936lQVT4I8Q6XJFlGkvqZ8SDRlfAE2o4xVDN66R+OUzU02asEfEtDvB7+Db+RQuRyPxeJl4DLA6lfGIi9al3WUr1lVz5s8ypAHZfuhTlr/Z8Lfara1bePTVZvDoXA2KYx295D4FE9dNvNY7fVT9MiTuZRDCwvS+L7jprkYnTROrpTUFtsiHmp5QyYvVCyk3mZ6AvII6AwivgYzhmGU5oG2ipMf/lb0yi2OK19I1OJkEK4qSf5JolXneUz4P1vVVZ9mfWwrNrQUw/b6QYlt50wIDAQAB",
   "minimum_chrome_version": "118",
