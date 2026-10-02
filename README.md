@@ -6,11 +6,19 @@ Chrome remains your browser. Browser control runs locally through a Chrome exten
 
 **Platforms:** macOS, Linux, and Windows 10/11; Chrome 118+, Node.js 22.12+ and pnpm 10. The extension is loaded unpacked from this repository; a Chrome Web Store listing is not available.
 
-**Status:** early preview. Browser control and terminal integration have automated local fixture coverage. Provider adapters have synthetic streaming checks; live provider compatibility and Windows runtime behavior still need verification. See the [release audit](docs/release-audit.md) for evidence and limits.
+**Status:** early preview. Browser control and terminal integration pass CI on macOS, Linux, and Windows with Node.js 22 and 24. Provider adapters have synthetic streaming checks; live provider compatibility still needs verification. See the [release audit](docs/release-audit.md) for evidence and limits.
 
 ## Installation
 
 You need Chrome 118+ and Node.js 22.12+. Browsy is distributed as an unpacked extension, so Chrome **Developer mode** is required. On Windows, use PowerShell and Windows Node.js rather than WSL.
+
+### Ask your agent to set it up
+
+Paste this into Codex, OpenCode, or Claude Code:
+
+> Search npm for Browsy by adityabelgaonkar (package: @adityabelgaonkar/browsy). Read the setup guide at https://github.com/adityabelgaonkar05/browsy, install the npm companion, build the Chrome extension, and configure Browsy's MCP server for the agent I'm using. Walk me through loading the extension unpacked in Chrome, run `browsy doctor`, and tell me when to start a new agent session.
+
+Your agent can run the installation and configuration commands. You still need to enable **Developer mode** and select **Load unpacked** in Chrome. For manual setup, follow the steps below.
 
 ### 1. Install the npm companion
 
