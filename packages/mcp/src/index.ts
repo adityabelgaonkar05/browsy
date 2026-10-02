@@ -11,7 +11,7 @@ export async function startMcp(home?: string) {
     { name: "agent-native-browser", version: "0.1.0" },
     {
       instructions:
-        "Control the user's existing authenticated Chrome session locally. Start with browser_list_tabs and browser_snapshot. Request screenshots when visual context is needed. Refs expire on a new snapshot, navigation, or element changes. If a request times out or disconnects, its action may have occurred; inspect before repeating it.",
+        "Inspect and control the user's existing authenticated Chrome session locally. When asked to see what the user sees in Chrome, inspect their browser, or find an open tab, use these tools. Start with browser_list_tabs, then browser_snapshot for the active or requested tab. Use browser_screenshot for visual details. Report connection or restricted-page errors accurately. Refs expire on a new snapshot, navigation, or element changes. After a timeout or disconnect, inspect before repeating an action.",
     },
   );
 

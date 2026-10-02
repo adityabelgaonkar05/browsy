@@ -93,6 +93,16 @@ agent-native doctor
 
 The built package includes its runtime dependencies. The global command can be used in place of `node packages/cli/dist/index.js` for all commands.
 
+## Agent says it cannot see Chrome
+
+The model learns browser access from the MCP tools and server instructions loaded by its agent client. The Chrome extension alone does not register tools with terminal agents.
+
+For Codex, run `codex mcp get agent_native_browser` to check registration, then open `/mcp` inside the affected session to check whether the server connected and its browser tools loaded. A configured server can still fail to start. Restart Codex after installing, rebuilding, or changing MCP configuration.
+
+Run `node packages/cli/dist/index.js doctor` (or `agent-native doctor`) to check the Chrome connection. Keep Chrome open and reload the extension if it is disconnected. If MCP startup reports `Cannot find module './impl/format'`, rebuild the CLI with the current bundler configuration and reinstall any global copy.
+
+Once the server is connected, ask: “Use agent_native_browser to list my Chrome tabs and inspect the active tab.” If an explicit request works but a natural request does not, tool selection is the remaining issue; registration alone does not guarantee that every model chooses the right tool.
+
 ## Removal
 
 ```sh

@@ -9,6 +9,9 @@ await build({
   outfile: `${root}packages/cli/dist/index.js`,
   bundle: true,
   platform: "node",
+  // jsonc-parser's UMD entry hides relative requires inside its factory.
+  // Prefer its ESM entry so every dependency is included in the standalone CLI.
+  mainFields: ["module", "main"],
   target: "node22",
   format: "esm",
   sourcemap: true,
