@@ -78,9 +78,19 @@ export function registryKey(browser: string) {
   return `HKCU\\Software\\${browser === "chromium" ? "Chromium" : "Google\\Chrome"}\\NativeMessagingHosts\\com.agent_native.browser`;
 }
 export async function registeredManifest(key: string): Promise<string | undefined> {
+  if (!key.startsWith("HKCU\\")) throw new Error("Native registration must use HKCU.");
   try {
-    const { stdout } = await exec("reg.exe", ["query", key, "/ve", "/reg:32"]);
-    return stdout.match(/REG_SZ\s+(.+)\r?\n/)?.[1].trim();
+    // reg.exe renders an unset default value as localized text. Read the value
+    // directly so an empty key left by uninstall cannot become a bogus path.
+    const { stdout } = await exec(
+      powershell,
+      psArgs(
+        `[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false); $base=[Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::CurrentUser,[Microsoft.Win32.RegistryView]::Registry32); $entry=$null; try { $entry=$base.OpenSubKey(${psQuote(key.slice(5))}); $value=$null; if($entry) { $value=$entry.GetValue('', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames) }; if($null -eq $value) { 'null' } else { ConvertTo-Json -InputObject $value -Compress } } finally { if($entry) { $entry.Dispose() }; $base.Dispose() }`,
+      ),
+      { env: windowsPowerShellEnvironment() },
+    );
+    const value: unknown = JSON.parse(stdout.trim());
+    return typeof value === "string" && value.length > 0 ? value : undefined;
   } catch {
     return undefined;
   }

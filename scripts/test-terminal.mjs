@@ -97,6 +97,21 @@ try {
     "Windows PowerShell child environments exclude inherited module paths without changing the parent",
   );
 
+  if (windows) {
+    const fixtureKey = `HKCU\\Software\\BrowsyTests\\${root.split(/[\\/]/).at(-1)}`;
+    try {
+      assert.equal(await registeredManifest(fixtureKey), undefined);
+      const manifestPath = join(root, "manifest's résumé.json");
+      await registerManifest(fixtureKey, manifestPath);
+      assert.equal(await registeredManifest(fixtureKey), manifestPath);
+      await unregisterManifest(fixtureKey);
+      assert.equal(await registeredManifest(fixtureKey), undefined);
+    } finally {
+      await exec("reg.exe", ["delete", fixtureKey, "/f", "/reg:32"]);
+    }
+    passed("Windows registry reads distinguish missing default values from Unicode manifest paths");
+  }
+
   const controllerPath = join(root, "controller.mjs");
   await build({
     entryPoints: [resolve("apps/extension/browser-tools/chrome-controller.ts")],
