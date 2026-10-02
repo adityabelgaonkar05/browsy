@@ -428,6 +428,10 @@ function App() {
               </option>
             ))}
           </datalist>
+          <p className="hint">
+            For typing without a ref, click the page's editor first. Text is inserted at its current
+            caret.
+          </p>
           <button
             className="click-button"
             disabled={busy || !ref || tabId === undefined}
@@ -452,17 +456,22 @@ function App() {
             <label className="checkbox">
               <input
                 type="checkbox"
-                checked={replaceExisting}
-                disabled={busy}
+                checked={Boolean(ref) && replaceExisting}
+                disabled={busy || !ref}
                 onChange={(e) => setReplaceExisting(e.target.checked)}
               />
               Replace existing text
             </label>
             <button
-              disabled={busy || !ref || tabId === undefined}
+              disabled={busy || tabId === undefined}
               onClick={() =>
                 void run("Text entered.", async () => {
-                  await tool("browser_type", { tabId: tabId!, ref, text, replaceExisting });
+                  await tool("browser_type", {
+                    tabId: tabId!,
+                    ref: ref || undefined,
+                    text,
+                    replaceExisting: ref ? replaceExisting : false,
+                  });
                 })
               }
             >

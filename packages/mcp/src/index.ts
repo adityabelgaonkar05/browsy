@@ -40,6 +40,14 @@ export async function startMcp(home?: string) {
             return {
               content: [
                 { type: "image" as const, data: screenshot.data, mimeType: screenshot.mimeType },
+                ...(screenshot.viewport
+                  ? [
+                      {
+                        type: "text" as const,
+                        text: `Viewport: ${screenshot.viewport.width} × ${screenshot.viewport.height} CSS pixels. For coordinate clicks, scale image positions to these viewport dimensions; the PNG may have a higher pixel density.`,
+                      },
+                    ]
+                  : []),
               ],
             };
           }

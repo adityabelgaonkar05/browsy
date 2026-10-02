@@ -151,7 +151,7 @@ CI defines macOS, Linux and Windows jobs with Node.js 22 and 24. See [CONTRIBUTI
 
 ## Scope
 
-Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, uploads/downloads, and developer tools are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
+Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Focused typing also supports same-origin iframe editors such as Google Docs; canvas editors can be targeted with screenshot coordinates. General iframe inspection/traversal, uploads/downloads, and developer tools are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
 
 ## License
 

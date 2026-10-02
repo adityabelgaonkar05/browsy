@@ -174,7 +174,10 @@ export async function runTurn(
       } else if (call.name === "browser_screenshot") {
         const image = response.result as ScreenshotResult;
         result.content = [
-          { type: "text", text: `Screenshot for ${call.id}.` },
+          {
+            type: "text",
+            text: `Screenshot for ${call.id}.${image.viewport ? ` Viewport: ${image.viewport.width} × ${image.viewport.height} CSS pixels. Scale image positions to these viewport dimensions for coordinate clicks; the PNG may have a higher pixel density.` : ""}`,
+          },
           { type: "image", data: image.data, mimeType: image.mimeType },
         ];
       } else {

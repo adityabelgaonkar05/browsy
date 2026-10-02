@@ -62,6 +62,7 @@ export interface HtmlResult {
 export interface ScreenshotResult {
   mimeType: "image/png";
   data: string;
+  viewport?: { width: number; height: number };
 }
 
 // Browser boundary shared by every transport and built-in chat.
@@ -73,8 +74,13 @@ export interface BrowserController {
   snapshot(tabId: number): Promise<PageSnapshot>;
   getHtml(tabId: number, options?: { selector?: string; maxLength?: number }): Promise<HtmlResult>;
   screenshot(tabId: number): Promise<ScreenshotResult>;
-  click(tabId: number, ref: string): Promise<void>;
-  type(tabId: number, ref: string, text: string, replaceExisting?: boolean): Promise<void>;
+  click(tabId: number, target: string | { x: number; y: number }): Promise<void>;
+  type(
+    tabId: number,
+    ref: string | undefined,
+    text: string,
+    replaceExisting?: boolean,
+  ): Promise<void>;
   navigate(tabId: number, url: string): Promise<void>;
   scroll(
     tabId: number,
@@ -97,8 +103,8 @@ export interface ToolParams {
   browser_snapshot: { tabId: number };
   browser_get_html: { tabId: number; selector?: string; maxLength?: number };
   browser_screenshot: { tabId: number };
-  browser_click: { tabId: number; ref: string };
-  browser_type: { tabId: number; ref: string; text: string; replaceExisting?: boolean };
+  browser_click: { tabId: number; ref?: string; x?: number; y?: number };
+  browser_type: { tabId: number; ref?: string; text: string; replaceExisting?: boolean };
   browser_navigate: { tabId: number; url: string };
   browser_scroll: { tabId: number; direction: "up" | "down" | "left" | "right"; amount?: number };
   browser_press_key: { tabId: number; key: string };

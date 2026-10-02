@@ -308,12 +308,20 @@ export class ChromeBrowserController implements BrowserController {
   screenshot(tabId: number): Promise<ScreenshotResult> {
     return this.serial(tabId, async () => {
       await this.connect(tabId);
+      const dimensions = await this.command<RemoteResult>(tabId, "Runtime.evaluate", {
+        expression: "({width: innerWidth, height: innerHeight})",
+        returnByValue: true,
+      });
       const { data } = await this.command<{ data: string }>(tabId, "Page.captureScreenshot", {
         format: "png",
         fromSurface: true,
         captureBeyondViewport: false,
       });
-      return { mimeType: "image/png", data };
+      return {
+        mimeType: "image/png",
+        data,
+        viewport: dimensions.result.value as { width: number; height: number },
+      };
     });
   }
 
@@ -389,9 +397,41 @@ export class ChromeBrowserController implements BrowserController {
     return response.result.value as T;
   }
 
-  click(tabId: number, ref: string): Promise<void> {
-    return this.serial(tabId, () =>
-      this.withElement(tabId, ref, async (objectId) => {
+  private async clickPoint(tabId: number, point: { x: number; y: number }) {
+    for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) {
+      await this.command(tabId, "Input.dispatchMouseEvent", {
+        type,
+        ...point,
+        ...(type === "mouseMoved" ? {} : { button: "left", clickCount: 1 }),
+      });
+    }
+  }
+
+  click(tabId: number, target: string | { x: number; y: number }): Promise<void> {
+    return this.serial(tabId, async () => {
+      if (typeof target !== "string") {
+        await this.connect(tabId);
+        const viewport = await this.command<RemoteResult>(tabId, "Runtime.evaluate", {
+          expression: "({width: innerWidth, height: innerHeight})",
+          returnByValue: true,
+        });
+        const bounds = viewport.result.value as { width: number; height: number };
+        if (
+          !Number.isFinite(target.x) ||
+          !Number.isFinite(target.y) ||
+          target.x < 0 ||
+          target.y < 0 ||
+          target.x >= bounds.width ||
+          target.y >= bounds.height
+        )
+          throw new BrowserError(
+            "INVALID_PARAMS",
+            "Click coordinates must be inside the visible viewport.",
+          );
+        await this.clickPoint(tabId, target);
+        return;
+      }
+      await this.withElement(tabId, target, async (objectId) => {
         const point = await this.call<{ x?: number; y?: number; error?: string }>(
           tabId,
           objectId,
@@ -423,30 +463,99 @@ export class ChromeBrowserController implements BrowserController {
             point.error === "obscured" ? "ELEMENT_OBSCURED" : "ELEMENT_NOT_INTERACTABLE",
             `Element is ${point.error}. Inspect the page again or take a screenshot.`,
           );
-        await this.command(tabId, "Input.dispatchMouseEvent", {
-          type: "mouseMoved",
-          x: point.x,
-          y: point.y,
-        });
-        await this.command(tabId, "Input.dispatchMouseEvent", {
-          type: "mousePressed",
-          x: point.x,
-          y: point.y,
-          button: "left",
-          clickCount: 1,
-        });
-        await this.command(tabId, "Input.dispatchMouseEvent", {
-          type: "mouseReleased",
-          x: point.x,
-          y: point.y,
-          button: "left",
-          clickCount: 1,
-        });
-      }),
-    );
+        await this.clickPoint(tabId, { x: point.x!, y: point.y! });
+      });
+    });
   }
 
-  type(tabId: number, ref: string, text: string, replaceExisting = true): Promise<void> {
+  private async sendKey(tabId: number, key: string) {
+    const event = keyEvent(key);
+    await this.command(tabId, "Input.dispatchKeyEvent", { ...event, type: "keyDown" });
+    const { text: _text, ...release } = event;
+    await this.command(tabId, "Input.dispatchKeyEvent", { ...release, type: "keyUp" });
+  }
+
+  private async typeFocused(tabId: number, text: string, replaceExisting: boolean) {
+    await this.connect(tabId);
+    const state = await this.command<RemoteResult>(tabId, "Runtime.evaluate", {
+      expression: `(() => {
+        let doc = document, active = doc.activeElement;
+        for (let depth = 0; depth < 32; depth++) {
+          if (active?.shadowRoot?.activeElement) { active = active.shadowRoot.activeElement; continue; }
+          if (active?.tagName === 'IFRAME' || active?.tagName === 'FRAME') {
+            try {
+              const inner = active.contentDocument;
+              if (!inner) return { error: 'The focused frame cannot be inspected. Cross-origin editor input is not supported.' };
+              doc = inner; active = doc.activeElement; continue;
+            } catch { return { error: 'The focused frame cannot be inspected.' }; }
+          }
+          break;
+        }
+        const editable = active && (active.isContentEditable || doc.designMode === 'on' ||
+          active.tagName === 'TEXTAREA' || (active.tagName === 'INPUT' &&
+          ['text','search','email','url','tel','password'].includes(active.type)));
+        if (!editable || active.disabled || active.readOnly || active.getAttribute('aria-disabled') === 'true')
+          return { error: 'No editable element is focused. Click the editor using a snapshot ref or screenshot coordinates first.' };
+        return { googleDocs: location.hostname === 'docs.google.com' && location.pathname.startsWith('/document/') &&
+          Boolean(doc.defaultView?.frameElement?.classList.contains('docs-texteventtarget-iframe')),
+          mac: navigator.platform.startsWith('Mac') };
+      })()`,
+      returnByValue: true,
+    });
+    const status = state.result.value as
+      { error?: string; googleDocs?: boolean; mac?: boolean } | undefined;
+    if (state.exceptionDetails || !status || status.error)
+      throw new BrowserError(
+        "ELEMENT_NOT_INTERACTABLE",
+        status?.error ?? "Cannot inspect the focused editor.",
+      );
+    if (status.googleDocs && replaceExisting)
+      throw new BrowserError(
+        "INVALID_PARAMS",
+        "Google Docs owns its document selection. Use Edit > Select all through snapshot refs, then type without replaceExisting, or press Backspace to clear the selection.",
+      );
+    if (status.googleDocs && text.includes("\t"))
+      throw new BrowserError(
+        "INVALID_PARAMS",
+        "Use browser_press_key for tabs in Google Docs; send text in separate calls.",
+      );
+    if (status.googleDocs && text.length > 2_000)
+      throw new BrowserError(
+        "INVALID_PARAMS",
+        "Google Docs typing is limited to 2000 characters per call. Send shorter chunks without replaceExisting to continue at the caret.",
+      );
+    const epoch = this.epochs.get(tabId);
+    if (replaceExisting) await this.sendKey(tabId, status.mac ? "Meta+a" : "Ctrl+a");
+    if (!text && replaceExisting) await this.sendKey(tabId, "Backspace");
+    else if (status.googleDocs) {
+      // Docs handles keyboard events in an iframe rather than ordinary DOM input.
+      // Preserve newlines as Enter events and Unicode as complete code points.
+      for (const character of text.replace(/\r\n?/g, "\n")) {
+        if (this.epochs.get(tabId) !== epoch)
+          throw new BrowserError(
+            "STALE_REF",
+            "Page changed during typing. Some text may have been entered; inspect before continuing.",
+          );
+        if (character === "\n") await this.sendKey(tabId, "Enter");
+        else
+          await this.command(tabId, "Input.dispatchKeyEvent", {
+            type: "char",
+            text: character,
+            unmodifiedText: character,
+          });
+      }
+    } else if (text) await this.command(tabId, "Input.insertText", { text });
+  }
+
+  type(
+    tabId: number,
+    ref: string | undefined,
+    text: string,
+    replaceExisting?: boolean,
+  ): Promise<void> {
+    if (ref === undefined)
+      return this.serial(tabId, () => this.typeFocused(tabId, text, replaceExisting ?? false));
+    const replace = replaceExisting ?? true;
     return this.serial(tabId, () =>
       this.withElement(tabId, ref, async (objectId) => {
         const status = await this.call<{ error?: string }>(
@@ -469,10 +578,10 @@ export class ChromeBrowserController implements BrowserController {
         else if (!this.isContentEditable && typeof this.selectionStart === 'number') this.setSelectionRange(this.value.length, this.value.length);
         return {};
       }`,
-          [replaceExisting],
+          [replace],
         );
         if (status.error) throw new BrowserError("ELEMENT_NOT_INTERACTABLE", status.error);
-        if (replaceExisting && !text) {
+        if (replace && !text) {
           await this.command(tabId, "Input.dispatchKeyEvent", {
             type: "keyDown",
             key: "Backspace",
@@ -516,11 +625,9 @@ export class ChromeBrowserController implements BrowserController {
 
   pressKey(tabId: number, key: string): Promise<void> {
     return this.serial(tabId, async () => {
-      const event = keyEvent(key);
+      keyEvent(key);
       await this.connect(tabId);
-      await this.command(tabId, "Input.dispatchKeyEvent", { ...event, type: "keyDown" });
-      const { text: _text, ...release } = event;
-      await this.command(tabId, "Input.dispatchKeyEvent", { ...release, type: "keyUp" });
+      await this.sendKey(tabId, key);
     });
   }
 

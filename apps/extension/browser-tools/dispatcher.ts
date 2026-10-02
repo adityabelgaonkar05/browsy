@@ -94,15 +94,34 @@ export async function dispatchTool(
         });
         break;
       }
-      case "browser_click":
-        await controller.click(tabId, string(params, "ref", 100));
+      case "browser_click": {
+        if (params.ref !== undefined) {
+          if (params.x !== undefined || params.y !== undefined)
+            throw new BrowserError("INVALID_PARAMS", "Provide ref or both x and y.");
+          await controller.click(tabId, string(params, "ref", 100));
+        } else {
+          if (
+            typeof params.x !== "number" ||
+            typeof params.y !== "number" ||
+            !Number.isFinite(params.x) ||
+            !Number.isFinite(params.y) ||
+            params.x < 0 ||
+            params.y < 0
+          )
+            throw new BrowserError(
+              "INVALID_PARAMS",
+              "Provide ref or both finite, nonnegative x and y coordinates.",
+            );
+          await controller.click(tabId, { x: params.x, y: params.y });
+        }
         break;
+      }
       case "browser_type": {
         if (params.replaceExisting !== undefined && typeof params.replaceExisting !== "boolean")
           throw new BrowserError("INVALID_PARAMS", "replaceExisting must be a boolean.");
         await controller.type(
           tabId,
-          string(params, "ref", 100),
+          params.ref === undefined ? undefined : string(params, "ref", 100),
           string(params, "text"),
           params.replaceExisting as boolean | undefined,
         );

@@ -35,7 +35,7 @@ export const browserTools = {
   browser_close_tab: { description: "Close a Chrome tab.", schema: z.object(tab), readOnly: false },
   browser_snapshot: {
     description:
-      "DEFAULT page inspection: compact accessibility roles, names, text, and short-lived element refs. Inspect before acting. Main frame only. On STALE_REF, take another snapshot. Prefer this over raw HTML.",
+      "DEFAULT page inspection: compact accessibility roles, names, text, and short-lived element refs. Inspect before acting. Main frame only. Canvas editors such as Google Docs may require a screenshot, coordinate click, then browser_type without ref. On STALE_REF, take another snapshot. Prefer this over raw HTML.",
     schema: z.object(tab),
     readOnly: true,
   },
@@ -57,16 +57,29 @@ export const browserTools = {
   },
   browser_click: {
     description:
-      "Click an element using a ref from this tab's latest snapshot. If stale or obscured, inspect again before retrying.",
-    schema: z.object({ ...tab, ref }),
+      "Click a snapshot ref, or supply x and y viewport CSS-pixel coordinates from a screenshot for canvas editors such as Google Docs. Provide either ref or both coordinates. If stale or obscured, inspect again before retrying.",
+    schema: z
+      .object({
+        ...tab,
+        ref: ref.optional(),
+        x: z.number().finite().min(0).optional(),
+        y: z.number().finite().min(0).optional(),
+      })
+      .refine(
+        (p) =>
+          p.ref !== undefined
+            ? p.x === undefined && p.y === undefined
+            : p.x !== undefined && p.y !== undefined,
+        "Provide ref or both x and y.",
+      ),
     readOnly: false,
   },
   browser_type: {
     description:
-      "Enter text into an input, textarea, or editable element using its snapshot ref. Replaces existing text by default; false appends. Empty replacement clears the input.",
+      "Enter text using a snapshot ref (replaces by default; false appends). Omit ref to type at the current caret or selection in the focused editor, including same-origin iframe editors such as Google Docs; click its editing area first. Focused typing preserves existing content by default. Google Docs accepts at most 2000 characters per call and rejects replaceExisting=true; use its Edit > Select all menu through snapshot refs before typing replacement text, or Backspace to clear. For other focused editors, explicit replaceExisting=true selects all and replaces it; an empty replacement clears.",
     schema: z.object({
       ...tab,
-      ref,
+      ref: ref.optional(),
       text: z.string().max(100_000),
       replaceExisting: z.boolean().optional(),
     }),
