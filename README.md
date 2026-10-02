@@ -1,8 +1,11 @@
 # Browsy
 
-Use Codex, Claude Code, OpenCode, or another MCP agent inside your existing authenticated Chrome session. Sign into websites normally; the extension exposes local browser tools to your terminal agent.
+An AI sidebar for Chrome, with browser tools for your terminal agents too. Chat directly in Browsy or use Codex, Claude Code, OpenCode, or another MCP agent to work inside your existing authenticated Chrome session. Sign into websites normally; both use the same browser tools.
 
-Chrome remains your browser. Browser control runs locally through a Chrome extension, Native Messaging host, and local IPC. There is no hosted control server or remote debugging port.
+- **Chat in Chrome:** ask Browsy to summarize your current page, find information across open tabs, or interact with a website. Choose your own model through OpenRouter, OpenAI, Anthropic, or an OpenAI-compatible endpoint, including local servers. Replies stream in the sidebar, with expandable tool results and screenshots for models that support vision. No terminal agent or npm bridge is needed for sidebar chat.
+- **Connect a terminal agent:** install the npm companion to give your existing MCP agent access to those same tabs, snapshots, screenshots, and browser actions.
+
+Chrome remains your browser. Browser control runs locally in the extension; terminal integration adds a Native Messaging host and local IPC. There is no hosted control server or remote debugging port. Sidebar chat sends messages and requested browser content to your chosen AI provider.
 
 **Platforms:** macOS, Linux, and Windows 10/11; Chrome 118+, Node.js 22.12+ and pnpm 10. The extension is loaded unpacked from this repository; a Chrome Web Store listing is not available.
 
@@ -11,6 +14,8 @@ Chrome remains your browser. Browser control runs locally through a Chrome exten
 ## Installation
 
 You need Chrome 118+ and Node.js 22.12+. Browsy is distributed as an unpacked extension, so Chrome **Developer mode** is required. On Windows, use PowerShell and Windows Node.js rather than WSL.
+
+For sidebar chat only, follow [Build and load the Chrome extension](#2-build-and-load-the-chrome-extension), then [Built-in AI chat](#built-in-ai-chat). To connect a terminal agent as well, complete all three steps below.
 
 ### Ask your agent to set it up
 
@@ -146,7 +151,7 @@ CI defines macOS, Linux and Windows jobs with Node.js 22 and 24. See [CONTRIBUTI
 
 ## Scope
 
-Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, full-page screenshots, uploads/downloads, and developer tools are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
+Current browser tools inspect and interact with the main document, including semantic controls inside shadow DOM. Iframe traversal, uploads/downloads, and developer tools are not implemented. Registration supports all three desktop platforms, with one Chrome profile owning a bridge directory at a time.
 
 ## License
 
