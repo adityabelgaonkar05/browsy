@@ -24,12 +24,21 @@ const psArgs = (script: string) => [
   Buffer.from(`$ErrorActionPreference='Stop'; ${script}`, "utf16le").toString("base64"),
 ];
 
+export function windowsPowerShellEnvironment(source: NodeJS.ProcessEnv = process.env) {
+  // pwsh -> Node -> powershell.exe otherwise inherits incompatible PS7 modules.
+  // Windows PowerShell reconstructs its own module path when this is absent.
+  return Object.fromEntries(
+    Object.entries(source).filter(([name]) => name.toUpperCase() !== "PSMODULEPATH"),
+  );
+}
+
 export async function protectDirectory(path: string) {
   await exec(
     powershell,
     psArgs(
       `$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User; $acl=New-Object Security.AccessControl.DirectorySecurity; $acl.SetAccessRuleProtection($true,$false); foreach($identity in @($sid,[Security.Principal.SecurityIdentifier]'S-1-5-18')) { $rule=New-Object Security.AccessControl.FileSystemAccessRule($identity,'FullControl','ContainerInherit,ObjectInherit','None','Allow'); $acl.AddAccessRule($rule) }; Set-Acl -LiteralPath ${psQuote(path)} -AclObject $acl`,
     ),
+    { env: windowsPowerShellEnvironment() },
   );
 }
 
@@ -40,6 +49,7 @@ export async function directoryIsPrivate(path: string) {
       psArgs(
         `$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value; $acl=Get-Acl -LiteralPath ${psQuote(path)}; $bad=@($acl.Access | Where-Object { $_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value -notin @($sid,'S-1-5-18') }); if(-not $acl.AreAccessRulesProtected -or $bad.Count -gt 0) { exit 1 }; 'OK'`,
       ),
+      { env: windowsPowerShellEnvironment() },
     );
     return stdout.trim() === "OK";
   } catch {
@@ -54,6 +64,7 @@ export async function pipeIsPrivate(path: string) {
       psArgs(
         `$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value; $pipe=New-Object IO.Pipes.NamedPipeClientStream('.',${psQuote(path.slice("\\\\.\\pipe\\".length))},[IO.Pipes.PipeDirection]::InOut); try { $pipe.Connect(1000); $acl=$pipe.GetAccessControl(); $rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])); $bad=@($rules | Where-Object { $_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Value -ne $sid }); $deny=@($rules | Where-Object { $_.AccessControlType -eq 'Deny' -and $_.IdentityReference.Value -eq 'S-1-5-2' -and $_.PipeAccessRights -eq [IO.Pipes.PipeAccessRights]::FullControl }); if(-not $acl.AreAccessRulesProtected -or $bad.Count -gt 0 -or $deny.Count -eq 0) { exit 1 }; 'OK' } finally { $pipe.Dispose() }`,
       ),
+      { env: windowsPowerShellEnvironment() },
     );
     return stdout.trim() === "OK";
   } catch {
@@ -92,7 +103,11 @@ export async function windowsPipeServer(path: string, onConnection: (socket: Dup
     psArgs(
       `Add-Type -TypeDefinition ${psQuote(source)}; [AgentNativePipe]::Run(${psQuote(path.slice("\\\\.\\pipe\\".length))})`,
     ),
-    { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] },
+    {
+      windowsHide: true,
+      stdio: ["pipe", "pipe", "pipe"],
+      env: windowsPowerShellEnvironment(),
+    },
   );
   const server = new EventEmitter();
   const sockets = new Map<number, Duplex>();

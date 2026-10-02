@@ -41,6 +41,7 @@ const {
   registryKey,
   directoryIsPrivate,
   pipeIsPrivate,
+  windowsPowerShellEnvironment,
 } = await import(pathToFileURL(modulePath));
 const extensionId = JSON.parse(await readFile(resolve("apps/extension/manifest.json"), "utf8")).key;
 const { createHash } = await import("node:crypto");
@@ -79,6 +80,23 @@ let context, server, native, mcp, otherMcp, statusClient;
 const input = new PassThrough();
 const output = new PassThrough();
 try {
+  const inheritedEnvironment = {
+    PSModulePath: "C:\\Program Files\\PowerShell\\7\\Modules",
+    psMODULEpath: "another incompatible module path",
+    Path: "C:\\Windows\\System32",
+    BROWSY_FIXTURE: "preserved",
+  };
+  const cleanEnvironment = windowsPowerShellEnvironment(inheritedEnvironment);
+  assert.deepEqual(cleanEnvironment, {
+    Path: inheritedEnvironment.Path,
+    BROWSY_FIXTURE: "preserved",
+  });
+  assert.equal(inheritedEnvironment.PSModulePath, "C:\\Program Files\\PowerShell\\7\\Modules");
+  assert.notEqual(cleanEnvironment, inheritedEnvironment);
+  passed(
+    "Windows PowerShell child environments exclude inherited module paths without changing the parent",
+  );
+
   const controllerPath = join(root, "controller.mjs");
   await build({
     entryPoints: [resolve("apps/extension/browser-tools/chrome-controller.ts")],

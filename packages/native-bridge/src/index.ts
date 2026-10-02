@@ -4,6 +4,7 @@ export { bridgePaths, nativeManifestPath } from "./paths";
 export { FrameDecoder, encodeFrame } from "./framing";
 
 export {
+  windowsPowerShellEnvironment,
   protectDirectory,
   directoryIsPrivate,
   pipeIsPrivate,

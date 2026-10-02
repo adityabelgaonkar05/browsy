@@ -1,6 +1,6 @@
 {
   "name": "@adityabelgaonkar/browsy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "description": "Connect terminal MCP agents to your existing Chrome session locally.",
   "type": "module",

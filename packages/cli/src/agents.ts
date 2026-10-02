@@ -5,6 +5,7 @@ import { access, lstat, mkdir, readFile, rename, unlink, writeFile } from "node:
 import { delimiter, dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { windowsPowerShellEnvironment } from "@agent-native/native-bridge";
 import { applyEdits, findNodeAtLocation, modify, parseTree } from "jsonc-parser";
 import type { ParseError } from "jsonc-parser";
 import { mcpConfiguration } from "./installation";
@@ -77,7 +78,7 @@ export async function prepareAgent(agent: Agent, configFile?: string) {
               "-EncodedCommand",
               Buffer.from(script, "utf16le").toString("base64"),
             ],
-            { timeout: 15000, windowsHide: true },
+            { timeout: 15000, windowsHide: true, env: windowsPowerShellEnvironment() },
           );
         } else await exec(command, args, { timeout: 15000 });
       } catch {
