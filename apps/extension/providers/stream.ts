@@ -9,7 +9,8 @@ export async function* events(
   const decoder = new TextDecoder();
   let buffer = "",
     data: string[] = [],
-    dataLength = 0;
+    dataLength = 0,
+    totalBytes = 0;
   const decode = () => {
     const raw = data.join("\n");
     data = [];
@@ -24,6 +25,9 @@ export async function* events(
     while (true) {
       signal.throwIfAborted();
       const { value, done } = await reader.read();
+      totalBytes += value?.byteLength ?? 0;
+      if (totalBytes > 32 * 1024 * 1024)
+        throw new Error("The provider response exceeded the stream size limit.");
       buffer += decoder.decode(value, { stream: !done });
       if (buffer.length > 8_000_000) throw new Error("A provider stream event is too large.");
       let newline: number;

@@ -32,6 +32,26 @@ function httpError(status: number) {
   return new Error(messages[status] ?? `Provider request failed (HTTP ${status}).`);
 }
 
+async function modelPayload(response: Response) {
+  if (!response.body) throw new Error("The provider did not return model information.");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "",
+    bytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      bytes += value?.byteLength ?? 0;
+      if (bytes > 8 * 1024 * 1024) throw new Error("The provider model list is too large.");
+      text += decoder.decode(value, { stream: !done });
+      if (done) return object(JSON.parse(text));
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export class Provider implements AIProvider {
   constructor(private readonly settings: ProviderSettings) {
     validateSettings(settings, false);
@@ -87,7 +107,7 @@ export class Provider implements AIProvider {
         this.settings.kind === "openrouter"
           ? "models/user"
           : `models${after ? `?after_id=${encodeURIComponent(after)}&limit=100` : this.settings.kind === "anthropic" ? "?limit=100" : ""}`;
-      const payload = object(await (await this.request(path, active)).json());
+      const payload = await modelPayload(await this.request(path, active));
       for (const value of list(payload.data)) {
         const item = object(value),
           capabilities = object(item.capabilities);

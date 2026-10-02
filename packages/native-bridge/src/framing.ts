@@ -56,5 +56,9 @@ export function encodeFrame(message: unknown, maxBytes: number): Buffer {
 
 export function writeFrame(stream: Writable, message: unknown, maxBytes: number) {
   if (stream.destroyed || stream.writableEnded) throw new Error("Transport is closed.");
-  stream.write(encodeFrame(message, maxBytes));
+  const frame = encodeFrame(message, maxBytes);
+  // Disconnect a stalled receiver instead of accumulating repeated large results.
+  if (stream.writableLength + frame.length > maxBytes + 4)
+    throw new Error("Transport write buffer exceeds its size limit.");
+  stream.write(frame);
 }

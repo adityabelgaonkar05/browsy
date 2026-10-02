@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm format:check && pnpm typecheck && pnpm build",
-    "test": "pnpm test:extension && pnpm test:terminal && pnpm test:package",
+    "test": "pnpm test:chat && pnpm test:extension && pnpm test:terminal && pnpm test:package",
+    "test:chat": "node scripts/test-chat.mjs",
     "test:extension": "node scripts/test-extension.mjs",
     "test:terminal": "node scripts/test-terminal.mjs",
     "test:package": "node scripts/test-package.mjs"

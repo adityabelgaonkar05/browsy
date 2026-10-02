@@ -10,6 +10,7 @@ Agent Native Browser trusts software running as the current OS user to control t
 - Chrome's native registration permits the configured extension origin, and the host validates its handshake.
 - Extension runtime calls are accepted from this extension's own pages. No content scripts or external message handler are exposed.
 - Requests and responses have frame limits, queues have bounds, and interrupted actions are not automatically replayed.
+- Stalled IPC receivers are disconnected when their write buffer exceeds its limit. Provider streams are limited to 32 MiB per response and model discovery to 8 MiB per page.
 
 ## Page data
 
@@ -25,6 +26,12 @@ Snapshots omit input value fields. Raw HTML and screenshots can contain private 
 
 ## Current scope
 
+Chat turns and key/settings changes share an extension-wide lock. A stale sidebar cannot send using outdated saved settings or restore a key removed in another sidebar. Already-running model requests and browser actions may complete before a stop takes effect.
+
+Website content and model output are untrusted. Chat instructions tell the model to treat page content as data, but this is not a guarantee against prompt injection. Use trusted agents and review consequential actions in your real browser session.
+
 Registration supports macOS, Linux, and Windows. Browser inspection is limited to HTTP/HTTPS main documents, including accessible shadow DOM controls; internal Chrome pages and file URLs are unsupported. The project does not provide isolation from other trusted programs running as the same user or a granular per-website permission system.
 
 Report implementation problems with a minimal reproduction using test data. Keep real credentials, private page content, and third-party exploit details out of public reports.
+
+For suspected vulnerabilities, use the repository's **Security → Report a vulnerability** option when available. If private reporting is unavailable, open an issue requesting a private disclosure channel without publishing exploit details or sensitive data.

@@ -1,10 +1,11 @@
 import { build } from "esbuild";
-import { chmod, copyFile, mkdir } from "node:fs/promises";
+import { chmod, copyFile, mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { thirdPartyNotices } from "./third-party-notices.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 await mkdir(`${root}packages/cli/dist`, { recursive: true });
-await build({
+const result = await build({
   entryPoints: [`${root}packages/cli/src/index.ts`],
   outfile: `${root}packages/cli/dist/index.js`,
   bundle: true,
@@ -15,10 +16,15 @@ await build({
   target: "node22",
   format: "esm",
   sourcemap: true,
+  metafile: true,
   banner: {
     js: '#!/usr/bin/env node\nimport { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);',
   },
 });
+await writeFile(
+  `${root}packages/cli/dist/THIRD_PARTY_NOTICES.txt`,
+  thirdPartyNotices(Object.keys(result.metafile.inputs)),
+);
 await chmod(`${root}packages/cli/dist/index.js`, 0o755);
 await copyFile(`${root}LICENSE`, `${root}packages/cli/LICENSE`);
 

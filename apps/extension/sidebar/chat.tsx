@@ -198,6 +198,10 @@ export function Chat() {
             throw new Error(
               "Chat is running in another sidebar. Stop it there before changing providers.",
             );
+          if (JSON.stringify(await loadSettings()) !== JSON.stringify(settings))
+            throw new Error(
+              "AI settings changed in another sidebar. Reopen this sidebar before saving.",
+            );
           await saveSettings(value);
           // Provider reasoning formats differ; start a fresh conversation on switch.
           if (
@@ -205,7 +209,7 @@ export function Chat() {
             profile.model !== draft.model ||
             profile.endpoint !== draft.endpoint
           ) {
-            const chat = { ...newChat(), pinned: current.current.pinned };
+            const chat = { ...newChat(), pinned: (await loadChat()).pinned };
             await saveChat(chat);
             update(chat);
           }
@@ -222,20 +226,25 @@ export function Chat() {
     }
   }
   async function forgetKey() {
-    const value = {
-      ...settings,
-      profiles: {
-        ...settings.profiles,
-        [draft.kind]: { ...settings.profiles[draft.kind], apiKey: "" },
-      },
-    };
+    setSaving(true);
     try {
-      await saveSettings(value);
-      setSettings(value);
-      setDraft((previous) => ({ ...previous, apiKey: "" }));
+      await navigator.locks.request(
+        "agent-native-chat-turn",
+        { ifAvailable: true },
+        async (lock) => {
+          if (!lock) throw new Error("Chat is running in another sidebar.");
+          const value = await loadSettings();
+          value.profiles[draft.kind].apiKey = "";
+          await saveSettings(value);
+          setSettings(value);
+          setDraft(value.profiles[draft.kind]);
+        },
+      );
       setStatus("API key removed from local storage.");
     } catch {
-      setError("Could not remove the API key.");
+      setError("Could not remove the API key. Stop any chat running in another sidebar first.");
+    } finally {
+      setSaving(false);
     }
   }
   async function send(text = input) {
@@ -280,12 +289,13 @@ export function Chat() {
               "Chat is running in another sidebar. Stop it there before sending here.",
             );
           const latest = await loadChat();
-          if (
-            JSON.stringify(latest.messages.map((message) => message.id)) !==
-            JSON.stringify(previous.messages.map((message) => message.id))
-          )
+          if (JSON.stringify(latest) !== JSON.stringify(previous))
             throw new Error(
               "This sidebar has an older conversation. Reopen it to load the latest history before continuing.",
+            );
+          if (JSON.stringify(await loadSettings()) !== JSON.stringify(settings))
+            throw new Error(
+              "AI settings changed in another sidebar. Reopen this sidebar before sending.",
             );
           locked = true;
           try {
@@ -351,7 +361,7 @@ export function Chat() {
         { ifAvailable: true },
         async (lock) => {
           if (!lock) throw new Error("Chat is running in another sidebar.");
-          const chat = { ...newChat(), pinned: current.current.pinned };
+          const chat = { ...newChat(), pinned: (await loadChat()).pinned };
           await saveChat(chat);
           update(chat);
           setError("");

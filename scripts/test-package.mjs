@@ -44,6 +44,7 @@ try {
   const files = packed.files.map((file) => file.path);
   assert.ok(files.includes("dist/index.js"));
   assert.ok(files.includes("dist/windows-pipe.cs"));
+  assert.ok(files.includes("dist/THIRD_PARTY_NOTICES.txt"));
   assert.ok(files.includes("LICENSE"));
   assert.ok(files.includes("README.md"));
   assert.ok(!files.some((file) => /(^|\/)(src|node_modules|\.codex|\.env)(\/|$)/.test(file)));

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { copyFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { thirdPartyNotices } from "../../scripts/third-party-notices.mjs";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 
@@ -10,8 +11,16 @@ export default defineConfig({
   plugins: [
     {
       name: "extension-manifest",
+      generateBundle() {
+        this.emitFile({
+          type: "asset",
+          fileName: "THIRD_PARTY_NOTICES.txt",
+          source: thirdPartyNotices(this.getModuleIds()),
+        });
+      },
       closeBundle() {
         copyFileSync(resolve(root, "manifest.json"), resolve(root, "dist/manifest.json"));
+        copyFileSync(resolve(root, "../../LICENSE"), resolve(root, "dist/LICENSE"));
       },
     },
   ],

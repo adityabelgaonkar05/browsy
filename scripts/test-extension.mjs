@@ -208,6 +208,68 @@ try {
   await panel.screenshot({ path: resolve(tmpdir(), "agent-native-panel.png"), fullPage: true });
   await tool("browser_release", { tabId });
   passed("manual sidebar buttons inspect and screenshot a selected tab");
+
+  const chatSettings = {
+    selected: "openrouter",
+    profiles: {
+      openrouter: {
+        kind: "openrouter",
+        endpoint: "https://openrouter.ai/api/v1",
+        apiKey: "fixture-key",
+        model: "fixture-model",
+        tools: true,
+        vision: false,
+        context: 128000,
+      },
+    },
+  };
+  let providerRequests = 0;
+  await context.route("https://openrouter.ai/**", (route) => {
+    providerRequests++;
+    return route.abort();
+  });
+  await panel.evaluate((chatSettings) => chrome.storage.local.set({ chatSettings }), chatSettings);
+  await panel.reload();
+  await panel.getByRole("button", { name: "Settings", exact: true }).waitFor();
+  const otherPanel = await context.newPage();
+  await otherPanel.goto(panel.url());
+  await otherPanel.getByRole("button", { name: "Settings", exact: true }).click();
+  await otherPanel.getByText("Advanced connection settings", { exact: true }).click();
+  await otherPanel.getByRole("button", { name: "Remove saved API key", exact: true }).click();
+  await otherPanel.waitForFunction(
+    async () =>
+      !(await chrome.storage.local.get("chatSettings")).chatSettings.profiles.openrouter.apiKey,
+  );
+  await panel.locator("#chat-input").fill("Inspect the fixture");
+  await panel.locator("#chat-input").press("Enter");
+  await panel
+    .getByRole("alert")
+    .filter({ hasText: "AI settings changed in another sidebar" })
+    .waitFor();
+  assert.equal(providerRequests, 0);
+  passed("removing a key in another sidebar blocks stale requests before provider access");
+
+  await panel.getByRole("button", { name: "Settings", exact: true }).click();
+  // Permission dialogs are outside this headless fixture; model the grant.
+  // Provider routes remain intercepted, and no real key or request is used.
+  await panel.evaluate(() => {
+    chrome.permissions.request = async () => true;
+  });
+  await panel.getByRole("button", { name: "Save changes", exact: true }).click();
+  await panel
+    .getByRole("alert")
+    .filter({ hasText: "AI settings changed in another sidebar" })
+    .waitFor();
+  assert.equal(
+    await panel.evaluate(
+      async () =>
+        (await chrome.storage.local.get("chatSettings")).chatSettings.profiles.openrouter.apiKey,
+    ),
+    "",
+  );
+  assert.equal(providerRequests, 0);
+  await otherPanel.close();
+  passed("stale settings cannot restore a removed API key");
   console.log(
     `\n${checks} browser checks passed. Screenshot: ${resolve(tmpdir(), "agent-native-viewport.png")}`,
   );

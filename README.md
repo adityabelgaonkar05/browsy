@@ -6,6 +6,8 @@ Chrome remains your browser. Browser control runs locally through a Chrome exten
 
 **Platforms:** macOS, Linux, and Windows 10/11; Chrome 118+, Node.js 22.12+ and pnpm 10. The CLI is installed from source; an npm registry release and Chrome Web Store listing are not available yet.
 
+**Status:** early preview. Browser control and terminal integration have automated local fixture coverage. Provider adapters have synthetic streaming checks; live provider compatibility and Windows runtime behavior still need verification. See the [release audit](docs/release-audit.md) for evidence and limits.
+
 ## Quick start
 
 ### 1. Build
@@ -119,7 +121,7 @@ pnpm exec playwright install chromium --no-shell
 pnpm test
 ```
 
-`pnpm check` runs formatting checks, TypeScript checks, and the production builds. `pnpm test` runs the extension, Native Messaging/MCP, and packaged CLI checks in temporary profiles and directories. Tests use local fixtures and make no model calls. They do not change your agent configuration. Windows tests temporarily register a native host for their isolated browser and restore the previous registry value afterward. Close other Chrome profiles before running the terminal suite.
+`pnpm check` runs formatting checks, TypeScript checks, and the production builds. `pnpm test` runs chat safety, extension, Native Messaging/MCP, and packaged CLI checks in temporary profiles and directories. Tests use local fixtures and make no model calls. They do not change your agent configuration. Windows tests temporarily register a native host for their isolated browser and restore the previous registry value afterward. Close other Chrome profiles before running the terminal suite.
 
 The macOS, Linux, and Windows CI workflow runs the same checks on Node.js 22 and 24. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and the optional Codex integration check.
 
@@ -129,4 +131,4 @@ Current browser tools inspect and interact with the main document, including sem
 
 ## License
 
-[MIT](LICENSE). Contributions are welcome through issues and pull requests.
+[MIT](LICENSE). Production builds include `THIRD_PARTY_NOTICES.txt` for bundled dependency licenses. Contributions are welcome through issues and pull requests.

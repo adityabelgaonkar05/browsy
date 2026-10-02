@@ -22,6 +22,7 @@ Run `pnpm format` to apply the repository's formatting rules. Run `pnpm dev` to 
 | `pnpm format:check`   | Formatting across source, configuration, and documentation                                                                             |
 | `pnpm typecheck`      | Strict TypeScript checks for every workspace                                                                                           |
 | `pnpm build`          | Production extension and standalone CLI bundle                                                                                         |
+| `pnpm test:chat`      | Incomplete tool streams, provider response limits, endpoint validation and transport buffering using synthetic fixtures                |
 | `pnpm test:extension` | Actual MV3 extension, control panel, snapshots, HTML, screenshots, typing/clicking, stale refs                                         |
 | `pnpm test:terminal`  | Actual Native Messaging and two stdio MCP clients, authenticated fixtures, routing, navigation, crash recovery, diagnostics, uninstall |
 | `pnpm test:package`   | npm archive contents, isolated global installation, CLI commands and MCP startup                                                       |

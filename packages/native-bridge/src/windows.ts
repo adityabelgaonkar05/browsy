@@ -5,6 +5,7 @@ import { Duplex } from "node:stream";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MAX_RESPONSE_BYTES } from "@agent-native/shared";
 
 const exec = promisify(execFile);
 const powershell = join(
@@ -99,6 +100,13 @@ export async function windowsPipeServer(path: string, onConnection: (socket: Dup
   let stopping = false;
   let diagnostics = "";
   function send(kind: number, id: number, bytes: Buffer = Buffer.alloc(0)) {
+    const queuedBytes = bytes.length + Math.max(1, Math.ceil(bytes.length / 65536)) * 9;
+    if (
+      child.stdin.destroyed ||
+      child.stdin.writableEnded ||
+      child.stdin.writableLength + queuedBytes > MAX_RESPONSE_BYTES * 2
+    )
+      throw new Error("Windows relay write buffer exceeds its limit or is closed.");
     for (let offset = 0; offset < bytes.length || offset === 0; offset += 65536) {
       const data = bytes.subarray(offset, offset + 65536);
       const header = Buffer.alloc(9);
@@ -150,12 +158,22 @@ export async function windowsPipeServer(path: string, onConnection: (socket: Dup
           const socket = new Duplex({
             read() {},
             write(chunk: Buffer, _encoding, done) {
-              send(2, id, chunk);
-              done();
+              try {
+                send(2, id, chunk);
+                done();
+              } catch (error) {
+                done(error instanceof Error ? error : new Error("Windows relay write failed."));
+              }
             },
             destroy(error, done) {
               sockets.delete(id);
-              send(3, id);
+              try {
+                send(3, id);
+              } catch {
+                // Closing a full relay must not crash the host. Its lifetime
+                // follows the Node process even when a close frame cannot fit.
+                child.kill();
+              }
               done(error);
             },
           });
