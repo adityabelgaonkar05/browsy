@@ -13,7 +13,7 @@
   "dependencies": {
     "@agent-native/shared": "workspace:*",
     "@agent-native/native-bridge": "workspace:*",
-    "@modelcontextprotocol/server": "^2.2.0",
+    "@modelcontextprotocol/server": "^2.3.0",
     "zod": "^4.2.0"
   },
   "devDependencies": {
