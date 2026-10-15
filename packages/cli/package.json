@@ -43,8 +43,8 @@
     "@agent-native/mcp": "workspace:*",
     "@agent-native/native-bridge": "workspace:*",
     "@agent-native/shared": "workspace:*",
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.5",
     "jsonc-parser": "^3.3.1",
-    "typescript": "~5.9.3"
+    "typescript": "~7.0.2"
   }
 }
